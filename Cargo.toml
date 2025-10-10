@@ -1,0 +1,20 @@
+[package]
+name = "marie"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+chrono = { version = "0.4", features = ["serde"] }
+clap = { version = "4", features = ["derive"] }
+markdown = { version = "1" }
+minijinja = { version = "2", features = ["loader"] }
+serde = { version = "1", features = ["derive"] }
+thiserror = { version = "2" }
+toml = { version = "0.9", features = ["serde"] }
+tracing = { version = "0.1" }
+tracing-subscriber = { version = "0.3" }
+walkdir = { version = "2" }
+
+
+[dev-dependencies]
+tempfile = { version = "*" }

@@ -1,0 +1,630 @@
+//src/content.rs
+
+use chrono::{DateTime, FixedOffset};
+use serde::{Deserialize, Serialize};
+use std::{fs, path::PathBuf};
+use thiserror::Error;
+use tracing::error;
+
+/// Represents a complete content piece with metadata and raw markdown data.
+///
+/// This struct combines the parsed frontmatter metadata with the actual
+/// markdown content of a file. It serves as the primary data structure
+/// for processing individual content files throughout the application.
+#[derive(Debug)]
+pub(crate) struct Content {
+    /// The parsed frontmatter metadata containing title, date, author, etc.
+    pub meta: ContentMeta,
+    /// The raw markdown content body as read from the file.
+    pub data: String,
+}
+
+/// Metadata for content pieces, typically stored in `.meta.toml` files.
+///
+/// This struct represents the frontmatter data that accompanies each
+/// markdown content file. It contains essential information about the
+/// content such as title, publication date, author, and tags.
+#[derive(Debug, Deserialize, Serialize)]
+pub(crate) struct ContentMeta {
+    /// Title of the content piece (article, post, page, etc.)
+    pub title: String,
+    /// Publication date of the content (recommended format: YYYY-MM-DD)
+    pub date: DateTime<FixedOffset>,
+    /// Author of the content
+    pub author: String,
+    /// List of tags/categories associated with the content
+    pub tags: Vec<String>,
+    /// Optional custom template to use for rendering this content
+    /// If not specified, a default template will be used
+    #[serde(default)]
+    pub template: Option<String>,
+}
+
+/// Processed content item ready for template rendering and output.
+///
+/// This struct contains the fully processed content including converted HTML,
+/// formatted metadata, and derived information like content type and filename.
+/// It's primarily used when passing content data to templates for rendering.
+#[derive(Debug, Serialize)]
+pub(crate) struct ContentItem {
+    /// The HTML-rendered content body
+    pub(crate) html: String,
+    /// The parsed metadata from the content's frontmatter
+    pub(crate) meta: ContentMeta,
+    /// Human-readable formatted date string
+    pub(crate) formatted_date: String,
+    /// Output filename for this content piece
+    pub(crate) filename: String,
+    /// Content type category (e.g., "blog", "projects", "page")
+    pub(crate) content_type: String,
+    /// HTML excerpt extracted from the content
+    pub(crate) excerpt: String,
+}
+
+/// Error types that can occur during content loading and processing.
+///
+/// These errors cover various failure scenarios when working with content files,
+/// including I/O issues, TOML parsing errors, and markdown conversion problems.
+#[derive(Error, Debug)]
+pub(crate) enum ContentError {
+    /// I/O error when reading or processing content files
+    #[error("I/O error processing file {path:?}: {source}")]
+    Io {
+        /// Path to the file that caused the I/O error
+        path: PathBuf,
+        /// The underlying I/O error
+        #[source]
+        source: std::io::Error,
+    },
+    /// TOML parsing error in metadata files
+    #[error("TOML parsing error in metadata file {path:?}: {source}")]
+    TomlParse {
+        /// Path to the TOML file that failed to parse
+        path: PathBuf,
+        /// The underlying TOML parsing error
+        #[source]
+        source: toml::de::Error,
+    },
+    /// Markdown parsing or conversion failure
+    #[error("Markdown parsing failed for file {path:?}: {message}")]
+    MarkdownParsingFailed {
+        /// Path to the markdown file that failed to parse
+        path: PathBuf,
+        /// Detailed error message from the markdown parser
+        message: String,
+    },
+}
+
+/// Loads both metadata and content from a markdown file.
+///
+/// This function reads a markdown file and its corresponding `.meta.toml` file,
+/// returning a complete `Content` struct with both the parsed metadata and
+/// raw markdown content.
+///
+/// # Arguments
+/// * `path` - Path to the markdown file to load
+///
+/// # Returns
+/// `Result<Content, ContentError>` - The loaded content or an error
+///
+/// # Errors
+/// Returns `ContentError::Io` if the markdown file cannot be read.
+/// Returns `ContentError::TomlParse` if the metadata file cannot be parsed.
+///
+/// # Examples
+/// ```
+/// # use std::path::PathBuf;
+/// # use your_crate::content::load_content;
+/// let content = load_content(&PathBuf::from("content/blog/post.md"))?;
+/// println!("Title: {}", content.meta.title);
+/// ```
+pub(crate) fn load_content(path: &PathBuf) -> Result<Content, ContentError> {
+    // 1. Load the metadata from the corresponding `.meta.toml` file.
+    let meta = load_metadata(path)?;
+
+    // 2. Read the entire markdown file content into a string.
+    let data = fs::read_to_string(path).map_err(|e| ContentError::Io {
+        path: path.clone(),
+        source: e,
+    })?;
+
+    Ok(Content { meta, data })
+}
+
+/// Loads metadata from a `.meta.toml` file corresponding to a markdown file.
+///
+/// For a given markdown file path, this function looks for and parses the
+/// associated metadata file (e.g., `post.md` -> `post.meta.toml`).
+///
+/// # Arguments
+/// * `markdown_path` - Path to the markdown file
+///
+/// # Returns
+/// `Result<ContentMeta, ContentError>` - The parsed metadata or an error
+///
+/// # Errors
+/// Returns `ContentError::Io` if the metadata file cannot be read.
+/// Returns `ContentError::TomlParse` if the TOML content cannot be parsed.
+///
+/// # Examples
+/// ```
+/// # use std::path::PathBuf;
+/// # use your_crate::content::load_metadata;
+/// let meta = load_metadata(&PathBuf::from("content/blog/post.md"))?;
+/// println!("Author: {}", meta.author);
+/// ```
+pub(crate) fn load_metadata(markdown_path: &PathBuf) -> Result<ContentMeta, ContentError> {
+    // hello-world.md" -> "hello-world.meta.toml"
+    let meta_path = markdown_path.with_extension("meta.toml");
+    let meta_content = fs::read_to_string(&meta_path).map_err(|e| ContentError::Io {
+        path: meta_path.clone(),
+        source: e,
+    })?;
+
+    let metadata: ContentMeta =
+        toml::from_str(&meta_content).map_err(|e| ContentError::TomlParse {
+            path: meta_path,
+            source: e,
+        })?;
+
+    Ok(metadata)
+}
+
+/// Converts markdown content to HTML using the Comrak parser.
+///
+/// This function takes a `Content` struct and converts its markdown data
+/// to HTML using GitHub Flavored Markdown (GFM) options.
+///
+/// # Arguments
+/// * `content` - The content containing markdown to convert
+/// * `path` - Path to the original file (for error reporting)
+///
+/// # Returns
+/// `Result<String, ContentError>` - The converted HTML or an error
+///
+/// # Errors
+/// Returns `ContentError::MarkdownParsingFailed` if markdown conversion fails.
+///
+/// # Examples
+/// ```
+/// # use std::path::PathBuf;
+/// # use your_crate::content::{Content, ContentMeta, convert_content};
+/// # use chrono::Utc;
+/// # let content = Content {
+/// #     meta: ContentMeta {
+/// #         title: "Test".to_string(),
+/// #         date: Utc::now().fixed_offset(),
+/// #         author: "Author".to_string(),
+/// #         tags: Vec::new(),
+/// #         template: None,
+/// #     },
+/// #     data: "# Hello World".to_string(),
+/// # };
+/// let html = convert_content(&content, PathBuf::from("test.md"))?;
+/// assert!(html.contains("<h1>Hello World</h1>"));
+/// ```
+pub(crate) fn convert_content(content: &Content, path: PathBuf) -> Result<String, ContentError> {
+    // Convert markdown to HTML using Comrak.
+    match markdown::to_html_with_options(&content.data, &markdown::Options::gfm()) {
+        Ok(html) => Ok(html),
+        Err(e) => {
+            error!("Markdown parsing failed: {}", e);
+            Err(ContentError::MarkdownParsingFailed {
+                path,
+                message: e.to_string(),
+            })
+        }
+    }
+}
+
+/// Extracts an HTML excerpt from markdown content using a specified pattern.
+///
+/// This function searches for a specific pattern (typically "## Summary") in
+/// markdown content and extracts everything from that pattern until the next
+/// heading. The extracted markdown is then converted to HTML.
+///
+/// # Arguments
+/// * `markdown` - The markdown content to search for excerpts
+/// * `summary_pattern` - The pattern to use for identifying excerpt sections
+///
+/// # Returns
+/// `String` - The HTML-rendered excerpt, or empty string if pattern not found
+///
+/// # Examples
+/// ```
+/// # use your_crate::content::get_excerpt_html;
+/// let markdown = r#"
+/// Some introductory text.
+///
+/// ## Summary
+/// This is the excerpt text.
+///
+/// ## Main Content
+/// The rest of the content.
+/// "#;
+///
+/// let excerpt = get_excerpt_html(markdown, "## Summary");
+/// assert!(excerpt.contains("This is the excerpt text"));
+/// assert!(!excerpt.contains("Main Content"));
+/// ```
+pub(crate) fn get_excerpt_html(markdown: &str, summary_pattern: &str) -> String {
+    // Find the start of the summary section
+    if let Some(start_idx) = markdown.find(summary_pattern) {
+        let content_after_summary = &markdown[start_idx + summary_pattern.len()..];
+
+        // Find the next heading (## or ###) or end of content
+        let end_idx = content_after_summary
+            .find("\n##")
+            .or_else(|| content_after_summary.find("\n###"))
+            .or_else(|| content_after_summary.find("\n# ")) // Also catch single # headings
+            .unwrap_or(content_after_summary.len());
+
+        let excerpt_markdown = content_after_summary[..end_idx].trim();
+
+        // Convert the excerpt markdown to HTML
+        markdown::to_html_with_options(excerpt_markdown, &markdown::Options::gfm())
+            .unwrap_or_else(|_| String::new())
+    } else {
+        String::new() // Return empty string if no summary found
+    }
+}
+
+// src/content.rs
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use chrono::{FixedOffset, TimeZone};
+    use std::fs::File;
+    use std::io::Write;
+    use tempfile::tempdir;
+
+    // Helper function to create test metadata
+    fn create_test_metadata() -> ContentMeta {
+        let fixed_offset = FixedOffset::east_opt(3600 * 5).unwrap(); // UTC+5
+        ContentMeta {
+            title: "Test Post".to_string(),
+            date: fixed_offset
+                .with_ymd_and_hms(2023, 12, 15, 10, 30, 0)
+                .unwrap(),
+            author: "Test Author".to_string(),
+            tags: vec!["rust".to_string(), "testing".to_string()],
+            template: Some("custom.html".to_string()),
+        }
+    }
+
+    // Helper function to create test content
+    fn create_test_content() -> Content {
+        Content {
+            meta: create_test_metadata(),
+            data: "# Test Content\n\nThis is test markdown content.\n\n## Summary\nThis is a test excerpt.\n\n## Main Content\nMore content here.".to_string(),
+        }
+    }
+
+    #[test]
+    fn test_get_excerpt_html_with_summary() {
+        let markdown = r#"
+Some introductory text.
+
+## Summary
+This is the excerpt text that should be extracted.
+It can have **bold** and *italic* formatting.
+
+## Main Content
+The rest of the content goes here.
+"#;
+
+        let excerpt = get_excerpt_html(markdown, "## Summary");
+        assert!(excerpt.contains("This is the excerpt text"));
+        assert!(excerpt.contains("<strong>bold</strong>"));
+        assert!(excerpt.contains("<em>italic</em>"));
+        assert!(!excerpt.contains("Main Content")); // Should stop before next heading
+    }
+
+    #[test]
+    fn test_get_excerpt_html_no_summary() {
+        let markdown = r#"
+Some content without a summary section.
+
+## Another Heading
+Just regular content.
+"#;
+
+        let excerpt = get_excerpt_html(markdown, "## Summary");
+        assert_eq!(excerpt, "");
+    }
+
+    #[test]
+    fn test_get_excerpt_html_summary_at_end() {
+        let markdown = r#"
+## Summary
+This is the only content.
+"#;
+
+        let excerpt = get_excerpt_html(markdown, "## Summary");
+        assert!(excerpt.contains("This is the only content"));
+    }
+
+    #[test]
+    fn test_get_excerpt_html_with_different_headings() {
+        let markdown = r#"
+## Summary
+Excerpt content here.
+
+### Subheading
+This should not be included.
+"#;
+
+        let excerpt = get_excerpt_html(markdown, "## Summary");
+        assert!(excerpt.contains("Excerpt content here"));
+        assert!(!excerpt.contains("Subheading"));
+    }
+
+    #[test]
+    fn test_get_excerpt_html_with_single_hash_heading() {
+        let markdown = r#"
+## Summary
+Excerpt content.
+
+# Main Heading
+Should not be included.
+"#;
+
+        let excerpt = get_excerpt_html(markdown, "## Summary");
+        assert!(excerpt.contains("Excerpt content"));
+        assert!(!excerpt.contains("Main Heading"));
+    }
+
+    #[test]
+    fn test_get_excerpt_html_empty_input() {
+        let excerpt = get_excerpt_html("", "## Summary");
+        assert_eq!(excerpt, "");
+    }
+
+    #[test]
+    fn test_get_excerpt_html_pattern_not_found() {
+        let markdown = "Just some regular content without the pattern.";
+        let excerpt = get_excerpt_html(markdown, "## Summary");
+        assert_eq!(excerpt, "");
+    }
+
+    #[test]
+    fn test_convert_content_success() {
+        let content = Content {
+            meta: create_test_metadata(),
+            data: "# Hello World\n\nThis is a **test**.".to_string(),
+        };
+
+        let result = convert_content(&content, PathBuf::from("test.md"));
+        assert!(result.is_ok());
+        let html = result.unwrap();
+        assert!(html.contains("<h1>Hello World</h1>"));
+        assert!(html.contains("<strong>test</strong>"));
+    }
+
+    #[test]
+    fn test_convert_content_invalid_markdown() {
+        let content = Content {
+            meta: create_test_metadata(),
+            data: "Invalid markdown with unclosed **bold".to_string(),
+        };
+
+        let result = convert_content(&content, PathBuf::from("test.md"));
+        assert!(result.is_ok()); // Comrak is generally tolerant of invalid markdown
+    }
+
+    #[test]
+    fn test_load_metadata_success() {
+        let temp_dir = tempdir().unwrap();
+        let md_path = temp_dir.path().join("test.md");
+        let meta_path = temp_dir.path().join("test.meta.toml");
+
+        // Create metadata file with proper RFC 3339 date format
+        let meta_content = r#"
+    title = "Test Post"
+    date = "2023-12-15T10:30:00+05:00"
+    author = "Test Author"
+    tags = ["rust", "testing"]
+    template = "custom.html"
+    "#;
+
+        File::create(&meta_path)
+            .unwrap()
+            .write_all(meta_content.as_bytes())
+            .unwrap();
+
+        let result = load_metadata(&md_path);
+        assert!(
+            result.is_ok(),
+            "Failed to load metadata: {:?}",
+            result.err()
+        );
+
+        let meta = result.unwrap();
+        assert_eq!(meta.title, "Test Post");
+        assert_eq!(meta.author, "Test Author");
+        assert_eq!(meta.tags, vec!["rust", "testing"]);
+        assert_eq!(meta.template, Some("custom.html".to_string()));
+
+        // Verify the date was parsed correctly
+        let expected_date = FixedOffset::east_opt(3600 * 5) // UTC+5
+            .unwrap()
+            .with_ymd_and_hms(2023, 12, 15, 10, 30, 0)
+            .unwrap();
+        assert_eq!(meta.date, expected_date);
+    }
+
+    #[test]
+    fn test_load_metadata_file_not_found() {
+        let temp_dir = tempdir().unwrap();
+        let md_path = temp_dir.path().join("nonexistent.md");
+
+        let result = load_metadata(&md_path);
+        assert!(result.is_err());
+
+        if let Err(ContentError::Io { path, source: _ }) = result {
+            assert!(path.ends_with("nonexistent.meta.toml"));
+        } else {
+            panic!("Expected Io error");
+        }
+    }
+
+    #[test]
+    fn test_load_metadata_invalid_toml() {
+        let temp_dir = tempdir().unwrap();
+        let md_path = temp_dir.path().join("test.md");
+        let meta_path = temp_dir.path().join("test.meta.toml");
+
+        // Create invalid TOML
+        File::create(&meta_path)
+            .unwrap()
+            .write_all(b"invalid toml content [")
+            .unwrap();
+
+        let result = load_metadata(&md_path);
+        assert!(result.is_err());
+
+        if let Err(ContentError::TomlParse { path, source: _ }) = result {
+            assert!(path.ends_with("test.meta.toml"));
+        } else {
+            panic!("Expected TomlParse error");
+        }
+    }
+
+    #[test]
+    fn test_load_content_success() {
+        let temp_dir = tempdir().unwrap();
+        let md_path = temp_dir.path().join("test.md");
+        let meta_path = temp_dir.path().join("test.meta.toml");
+
+        // Create metadata file with proper date format
+        let meta_content = r#"
+    title = "Test Post"
+    date = "2023-12-15T10:30:00+05:00"
+    author = "Test Author"
+    tags = ["rust", "testing"]
+    "#;
+
+        File::create(&meta_path)
+            .unwrap()
+            .write_all(meta_content.as_bytes())
+            .unwrap();
+
+        // Create markdown file
+        File::create(&md_path)
+            .unwrap()
+            .write_all(b"# Test Content\n\nThis is test content.")
+            .unwrap();
+
+        let result = load_content(&md_path);
+        assert!(result.is_ok(), "Failed to load content: {:?}", result.err());
+
+        let content = result.unwrap();
+        assert_eq!(content.meta.title, "Test Post");
+        assert_eq!(content.data, "# Test Content\n\nThis is test content.");
+
+        // Verify date was parsed correctly
+        let expected_date = FixedOffset::east_opt(3600 * 5) // UTC+5
+            .unwrap()
+            .with_ymd_and_hms(2023, 12, 15, 10, 30, 0)
+            .unwrap();
+        assert_eq!(content.meta.date, expected_date);
+    }
+
+    #[test]
+    fn test_load_content_metadata_file_not_found() {
+        let temp_dir = tempdir().unwrap();
+        let md_path = temp_dir.path().join("test.md");
+
+        // Create markdown file but no metadata file
+        File::create(&md_path)
+            .unwrap()
+            .write_all(b"# Test Content")
+            .unwrap();
+
+        let result = load_content(&md_path);
+        assert!(result.is_err());
+
+        if let Err(ContentError::Io { path, source: _ }) = result {
+            assert!(path.ends_with("test.meta.toml"));
+        } else {
+            panic!("Expected Io error for metadata file");
+        }
+    }
+
+    #[test]
+    fn test_content_meta_serialization_deserialization() {
+        let meta = create_test_metadata();
+
+        // Serialize to TOML
+        let toml_string = toml::to_string(&meta).unwrap();
+        assert!(toml_string.contains("title = \"Test Post\""));
+        assert!(toml_string.contains("tags = [\"rust\", \"testing\"]"));
+
+        // Deserialize back
+        let deserialized: ContentMeta = toml::from_str(&toml_string).unwrap();
+        assert_eq!(deserialized.title, meta.title);
+        assert_eq!(deserialized.author, meta.author);
+        assert_eq!(deserialized.tags, meta.tags);
+    }
+
+    #[test]
+    fn test_content_meta_without_template() {
+        // Use proper RFC 3339 date format for TOML
+        let meta_content = r#"
+    title = "Test Post"
+    date = "2023-12-15T10:30:00+05:00"
+    author = "Test Author"
+    tags = ["rust"]
+    "#;
+
+        let meta: ContentMeta = toml::from_str(meta_content).unwrap();
+        assert_eq!(meta.template, None);
+        assert_eq!(meta.title, "Test Post");
+        assert_eq!(meta.author, "Test Author");
+        assert_eq!(meta.tags, vec!["rust"]);
+
+        // Verify date was parsed
+        let expected_date = FixedOffset::east_opt(3600 * 5) // UTC+5
+            .unwrap()
+            .with_ymd_and_hms(2023, 12, 15, 10, 30, 0)
+            .unwrap();
+        assert_eq!(meta.date, expected_date);
+    }
+
+    #[test]
+    fn test_get_excerpt_html_with_custom_pattern() {
+        let markdown = r#"
+Some text.
+
+<!-- excerpt -->
+This is a custom excerpt pattern.
+
+## Content
+Main content.
+"#;
+
+        let excerpt = get_excerpt_html(markdown, "<!-- excerpt -->");
+        assert!(excerpt.contains("This is a custom excerpt pattern"));
+        assert!(!excerpt.contains("Main content"));
+    }
+
+    #[test]
+    fn test_get_excerpt_html_stops_at_different_headings() {
+        let markdown = r#"
+## Summary
+Excerpt content.
+
+## Another Heading
+Not included.
+
+### Subheading
+Also not included.
+"#;
+
+        let excerpt = get_excerpt_html(markdown, "## Summary");
+        assert!(excerpt.contains("Excerpt content"));
+        assert!(!excerpt.contains("Another Heading"));
+        assert!(!excerpt.contains("Subheading"));
+    }
+}
