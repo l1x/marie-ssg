@@ -24,7 +24,7 @@ pub(crate) struct Content {
 /// This struct represents the frontmatter data that accompanies each
 /// markdown content file. It contains essential information about the
 /// content such as title, publication date, author, and tags.
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Clone, Debug, Deserialize, Serialize)]
 pub(crate) struct ContentMeta {
     /// Title of the content piece (article, post, page, etc.)
     pub title: String,
@@ -250,6 +250,11 @@ pub(crate) fn convert_content(content: &Content, path: PathBuf) -> Result<String
 pub(crate) fn get_excerpt_html(markdown: &str, summary_pattern: &str) -> String {
     // Find the start of the summary section
     if let Some(start_idx) = markdown.find(summary_pattern) {
+        // Ensure we don't panic if summary_pattern is at the end
+        if start_idx + summary_pattern.len() >= markdown.len() {
+            return String::new();
+        }
+
         let content_after_summary = &markdown[start_idx + summary_pattern.len()..];
 
         // Find the next heading (## or ###) or end of content
@@ -261,9 +266,14 @@ pub(crate) fn get_excerpt_html(markdown: &str, summary_pattern: &str) -> String 
 
         let excerpt_markdown = content_after_summary[..end_idx].trim();
 
-        // Convert the excerpt markdown to HTML
-        markdown::to_html_with_options(excerpt_markdown, &markdown::Options::gfm())
-            .unwrap_or_else(|_| String::new())
+        // Convert the excerpt markdown to HTML with better error handling
+        match markdown::to_html_with_options(excerpt_markdown, &markdown::Options::gfm()) {
+            Ok(html) => html,
+            Err(e) => {
+                tracing::warn!("Failed to convert excerpt to HTML: {}", e);
+                String::new()
+            }
+        }
     } else {
         String::new() // Return empty string if no summary found
     }
@@ -290,14 +300,6 @@ mod tests {
             author: "Test Author".to_string(),
             tags: vec!["rust".to_string(), "testing".to_string()],
             template: Some("custom.html".to_string()),
-        }
-    }
-
-    // Helper function to create test content
-    fn create_test_content() -> Content {
-        Content {
-            meta: create_test_metadata(),
-            data: "# Test Content\n\nThis is test markdown content.\n\n## Summary\nThis is a test excerpt.\n\n## Main Content\nMore content here.".to_string(),
         }
     }
 

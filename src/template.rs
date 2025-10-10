@@ -1,72 +1,44 @@
 // src/template.rs
 
 use minijinja::{Environment, context, path_loader};
-use std::path::PathBuf;
 
 use crate::{
     config::Config,
-    content::{ContentItem, ContentMeta, convert_content, get_excerpt_html, load_content},
-    utils::{add_date_prefix, get_content_type, get_output_path},
+    content::{ContentItem, ContentMeta, get_excerpt_html},
 };
 
-pub(crate) fn render_index_with_contents(
+pub(crate) fn render_index_from_loaded(
     config: &Config,
     index_template_name: &str,
-    content_files: Vec<&PathBuf>,
+    loaded: Vec<&crate::LoadedContent>,
 ) -> Result<String, minijinja::Error> {
     let mut env = Environment::new();
     env.set_loader(path_loader(&config.template_dir));
     let tmpl = env.get_template(index_template_name)?;
 
-    let mut contents = Vec::new();
-    for file in content_files {
-        let content_type = get_content_type(file, &config.content_dir);
+    let mut contents: Vec<ContentItem> = loaded
+        .iter()
+        .map(|lc| {
+            let filename = lc
+                .output_path
+                .strip_prefix(&config.output_dir)
+                .unwrap_or(&lc.output_path)
+                .to_string_lossy()
+                .to_string();
 
-        // Load the content
-        let content = load_content(file).map_err(|e| {
-            minijinja::Error::new(
-                minijinja::ErrorKind::InvalidOperation,
-                format!("Failed to load content: {}", e),
-            )
-        })?;
+            let formatted_date = lc.content.meta.date.format("%B %d, %Y").to_string();
+            let excerpt = get_excerpt_html(&lc.content.data, "## Summary");
 
-        // Convert the markdown to HTML
-        let html = convert_content(&content, file.clone()).map_err(|e| {
-            minijinja::Error::new(
-                minijinja::ErrorKind::InvalidOperation,
-                format!("Failed to convert content: {}", e),
-            )
-        })?;
-
-        let mut output_path = get_output_path(file, &config.content_dir, &config.output_dir);
-
-        // Apply date prefix if configured for this content type
-        if let Some(content_type_config) = config.content_types.get(&content_type) {
-            if content_type_config.output_naming.as_deref() == Some("date") {
-                output_path = add_date_prefix(output_path, &content.meta.date);
+            ContentItem {
+                html: lc.html.clone(),
+                meta: lc.content.meta.clone(),
+                formatted_date,
+                filename,
+                content_type: lc.content_type.clone(),
+                excerpt,
             }
-        }
-
-        let filename = output_path
-            .strip_prefix(&config.output_dir)
-            .unwrap_or(&output_path)
-            .to_string_lossy()
-            .to_string();
-
-        let formatted_date = content.meta.date.format("%B %d, %Y").to_string();
-
-        // Extract excerpt from the markdown content
-        let excerpt = get_excerpt_html(&content.data, "## Summary");
-
-        contents.push(ContentItem {
-            html,
-            meta: content.meta,
-            formatted_date,
-            filename,
-            content_type,
-            excerpt,
-        });
-    }
+        })
+        .collect();
 
     contents.sort_by(|a, b| b.meta.date.cmp(&a.meta.date));
 
@@ -97,14 +69,4 @@ pub(crate) fn render_html(
     };
 
     tmpl.render(context)
-}
-
-pub(crate) fn get_content_by_type<'a>(
-    files: &'a [PathBuf],
-    content_type: &'a str,
-) -> Vec<&'a PathBuf> {
-    files
-        .into_iter()
-        .filter(|f| f.components().any(|x| x.as_os_str() == content_type))
-        .collect()
 }

@@ -1,6 +1,6 @@
 [package]
-name = "marie"
-version = "0.1.0"
+name = "marie-ssg"
+version = "0.2.0"
 edition = "2024"
 
 [dependencies]
@@ -8,6 +8,7 @@ chrono = { version = "0.4", features = ["serde"] }
 clap = { version = "4", features = ["derive"] }
 markdown = { version = "1" }
 minijinja = { version = "2", features = ["loader"] }
+rayon = { version = "1.11" }
 serde = { version = "1", features = ["derive"] }
 thiserror = { version = "2" }
 toml = { version = "0.9", features = ["serde"] }
@@ -15,6 +16,24 @@ tracing = { version = "0.1" }
 tracing-subscriber = { version = "0.3" }
 walkdir = { version = "2" }
 
-
 [dev-dependencies]
+criterion = { version = "0.5", features = [ "html_reports" ] }
 tempfile = { version = "*" }
+
+[profile.release]
+codegen-units = 1          # reduces binary size
+debug = "full"             # No one needs an undebuggable release binary
+lto = true                 # reduces binary size
+opt-level = "s"            # reduces binary size
+panic = "abort"            # reduces binary size
+split-debuginfo = "packed" # generates a separate *.dwp/*.dSYM so the binary can get stripped
+strip = "symbols"          # See split-debuginfo - reduces binary size
+incremental = true         # Improves re-compile times
+
+[profile.dev]
+codegen-units = 8
+lto = "thin"
+
+[profile.bench]
+codegen-units = 16
+lto = "thin"

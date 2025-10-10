@@ -1,15 +1,16 @@
 // src/main.rs
 
 use clap::Parser;
+use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
 use std::path::PathBuf;
 use tracing::{debug, instrument};
 use tracing::{error, info};
 
 use crate::config::load_config;
-use crate::content::{convert_content, load_content};
+use crate::content::{Content, convert_content, load_content};
 use crate::error::RunError;
 use crate::output::{copy_static_files, write_output_file};
-use crate::template::{get_content_by_type, render_html, render_index_with_contents};
+use crate::template::{render_html, render_index_from_loaded};
 use crate::utils::{
     add_date_prefix, find_markdown_files, get_content_type, get_content_type_template,
     get_output_path,
@@ -31,75 +32,118 @@ struct Cli {
 }
 
 // Application Logic
+#[derive(Debug)]
+pub(crate) struct LoadedContent {
+    pub(crate) path: PathBuf,
+    pub(crate) content: Content,
+    pub(crate) html: String,
+    pub(crate) content_type: String,
+    pub(crate) output_path: PathBuf,
+}
 
 /// The main entry point for the application logic.
-#[instrument(name = "run", skip_all, fields(config_path = %cli.config))]
+#[instrument(skip_all)]
 pub(crate) fn run(cli: Cli) -> Result<(), RunError> {
     // loading config
     let config = load_config(&cli)?;
     info!(?config, "Configuration loaded successfully");
 
     // 0. Copy static files first
+    //
     copy_static_files(&config)?;
 
     // 1. Find all markdown files in `config.content_dir`.
+    //
     let files = find_markdown_files(&config.content_dir);
     debug!("{:?}", files);
 
-    // 2. For each file parse `ContentMeta` (toml) and Content (md) and render the content type specific template.
-    for file in &files {
-        info!("Processing file: {:?}", file);
-        let content_type = get_content_type(&file, &config.content_dir);
-        info!("Content type is: {:?} for {:?}", content_type, file);
-        let content_template = get_content_type_template(&config, &content_type);
-        let content = load_content(&file)?;
-        let html = convert_content(&content, file.clone())?;
-        // 2.a Rendering HTML
+    // 2. Loading all content
+    //
+    let start = std::time::Instant::now();
+
+    let loaded_contents: Vec<LoadedContent> = files
+        .par_iter() // ✅ Parallel iterator
+        .map(|file| -> Result<LoadedContent, RunError> {
+            info!("Loading: {}", file.display());
+
+            let content_type = get_content_type(&file, &config.content_dir);
+            let content = load_content(&file)?;
+            let html = convert_content(&content, file.clone())?;
+
+            let mut output_path = get_output_path(&file, &config.content_dir, &config.output_dir);
+            if let Some(ct_config) = config.content_types.get(&content_type) {
+                if ct_config.output_naming.as_deref() == Some("date") {
+                    output_path = add_date_prefix(output_path, &content.meta.date);
+                }
+            }
+
+            Ok(LoadedContent {
+                path: file.clone(),
+                content,
+                html,
+                content_type,
+                output_path,
+            })
+        })
+        .collect::<Result<Vec<_>, _>>()?; // ✅ Collect Results, fail fast on error
+
+    info!(
+        "Loaded {} files in {:?}",
+        loaded_contents.len(),
+        start.elapsed()
+    );
+
+    // 3. Write individual pages
+    //
+    for loaded in &loaded_contents {
+        // ✅ Now loaded is &LoadedContent
+        info!(
+            "Rendering '{}' ({} -> {})",
+            loaded.content.meta.title,
+            loaded.path.display(),
+            loaded.output_path.display()
+        );
+
+        let content_template = get_content_type_template(&config, &loaded.content_type);
         let rendered = render_html(
-            &html,
-            &content.meta,
+            &loaded.html,
+            &loaded.content.meta,
             &config,
             &config.template_dir,
             &content_template,
         )?;
-
-        //2.b. Writing out the rendered HTML
-        let mut output_path = get_output_path(&file, &config.content_dir, &config.output_dir);
-
-        // Check if this content type uses date prefix for output naming
-        if let Some(content_type_config) = config.content_types.get(&content_type) {
-            if content_type_config.output_naming.as_deref() == Some("date") {
-                // Apply date prefix
-                output_path = add_date_prefix(output_path, &content.meta.date);
-            }
-        };
-
-        info!("Output path: {:?} for {:?}", output_path, file);
-        write_output_file(&output_path, &rendered)?;
+        write_output_file(&loaded.output_path, &rendered)?;
     }
 
-    // 3. Rendering contet type indexes
-
+    // 4. Render content type indexes
+    //
     for (content_type, v) in config.content_types.iter() {
         info!(
             "Content type: {} -> Index Template: {:?}",
             content_type, v.index_template
         );
 
-        let contentz = get_content_by_type(&files, content_type);
-        let index_rendered = render_index_with_contents(&config, &v.index_template, contentz)?;
-        // Determine the output path for this index
+        let filtered: Vec<_> = loaded_contents
+            .iter()
+            .filter(|lc| &lc.content_type == content_type)
+            .collect();
+
+        let index_rendered = render_index_from_loaded(&config, &v.index_template, filtered)?;
+
         let output_path = PathBuf::from(&config.output_dir)
             .join(content_type)
             .join("index.html");
 
-        // Write the rendered content to the output file
         write_output_file(&output_path, &index_rendered)?;
     }
-    // 4. Rendering site index
 
-    let site_index_rendered =
-        render_index_with_contents(&config, &config.site_index_template, files.iter().collect())?;
+    // 5. Render site index
+    //
+    let site_index_rendered = render_index_from_loaded(
+        &config,
+        &config.site_index_template,
+        loaded_contents.iter().collect(),
+    )?;
 
     write_output_file(
         &PathBuf::from(&config.output_dir).join("index.html"),

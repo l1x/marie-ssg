@@ -81,18 +81,20 @@ pub(crate) fn get_content_type(file: &PathBuf, content_dir: &str) -> String {
 /// - Hidden files and directories (starting with `.`) are included in the search
 pub(crate) fn find_markdown_files(content_dir: &str) -> Vec<PathBuf> {
     let mut markdown_files = Vec::new();
-    for entry in WalkDir::new(&content_dir)
-        .into_iter()
-        .filter_map(Result::ok)
-        .filter(|e| e.file_type().is_file())
-    {
+
+    let walkdir = WalkDir::new(&content_dir);
+
+    for entry in walkdir.into_iter().filter_map(Result::ok) {
         let path = entry.path();
-        if let Some(ext) = path.extension() {
-            if ext == "md" || ext == "markdown" {
-                markdown_files.push(path.to_path_buf());
+        if entry.file_type().is_file() {
+            if let Some(ext) = path.extension() {
+                if ext == "md" || ext == "markdown" {
+                    markdown_files.push(path.to_path_buf());
+                }
             }
         }
     }
+
     markdown_files
 }
 
