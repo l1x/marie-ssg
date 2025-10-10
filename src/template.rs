@@ -1,19 +1,25 @@
 // src/template.rs
 
 use minijinja::{Environment, context, path_loader};
+use std::sync::OnceLock;
 
 use crate::{
     config::Config,
     content::{ContentItem, ContentMeta, get_excerpt_html},
 };
 
+static ENV: OnceLock<Environment<'static>> = OnceLock::new();
+
 pub(crate) fn render_index_from_loaded(
     config: &Config,
     index_template_name: &str,
     loaded: Vec<&crate::LoadedContent>,
 ) -> Result<String, minijinja::Error> {
-    let mut env = Environment::new();
-    env.set_loader(path_loader(&config.template_dir));
+    let env = ENV.get_or_init(|| {
+        let mut env = Environment::new();
+        env.set_loader(path_loader(&config.template_dir));
+        env
+    });
     let tmpl = env.get_template(index_template_name)?;
 
     let mut contents: Vec<ContentItem> = loaded
