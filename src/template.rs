@@ -17,7 +17,7 @@ pub(crate) fn render_index_from_loaded(
 ) -> Result<String, minijinja::Error> {
     let env = ENV.get_or_init(|| {
         let mut env = Environment::new();
-        env.set_loader(path_loader(&config.template_dir));
+        env.set_loader(path_loader(&config.site.template_dir));
         env
     });
     let tmpl = env.get_template(index_template_name)?;
@@ -27,7 +27,7 @@ pub(crate) fn render_index_from_loaded(
         .map(|lc| {
             let filename = lc
                 .output_path
-                .strip_prefix(&config.output_dir)
+                .strip_prefix(&config.site.output_dir)
                 .unwrap_or(&lc.output_path)
                 .to_string_lossy()
                 .to_string();

@@ -22,7 +22,7 @@ pub(crate) enum WriteError {
 }
 
 pub(crate) fn copy_static_files(config: &Config) -> Result<(), StaticError> {
-    let static_dir = &config.static_dir;
+    let static_dir = &config.site.static_dir;
     info!("Processing static directory: {}", static_dir);
 
     // Check if static directory exists
@@ -32,7 +32,7 @@ pub(crate) fn copy_static_files(config: &Config) -> Result<(), StaticError> {
     }
 
     // Create the static directory in the output folder
-    let output_static_dir = PathBuf::from(&config.output_dir).join("static");
+    let output_static_dir = PathBuf::from(&config.site.output_dir).join("static");
     fs::create_dir_all(&output_static_dir).map_err(|e| StaticError::Io {
         path: output_static_dir.clone(),
         source: e,

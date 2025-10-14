@@ -1,2 +1,26 @@
+# tools
 [tools]
 rust = "1.90.0"
+
+# env
+
+# tasks
+[tasks.lint]
+description = "Running linting"
+run = "cargo lint"
+
+[tasks.tests]
+description = "Running tests"
+run = "cargo test -- --nocapture"
+
+[tasks.build-dev]
+description = "Building the development version"
+run = "cargo build"
+
+[tasks.build-prod]
+description = "Building the development version"
+run = "cargo build --release"
+
+[tasks.build-prod-with-timings]
+description = "Building the development version"
+run = "cargo build --release --timings"

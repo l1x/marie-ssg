@@ -54,7 +54,7 @@ pub(crate) fn run(cli: Cli) -> Result<(), RunError> {
 
     // 1. Find all markdown files in `config.content_dir`.
     //
-    let files = find_markdown_files(&config.content_dir);
+    let files = find_markdown_files(&config.site.content_dir);
     debug!("{:?}", files);
 
     // 2. Loading all content
@@ -62,16 +62,17 @@ pub(crate) fn run(cli: Cli) -> Result<(), RunError> {
     let start = std::time::Instant::now();
 
     let loaded_contents: Vec<LoadedContent> = files
-        .par_iter() // ✅ Parallel iterator
+        .par_iter() // Parallel iterator
         .map(|file| -> Result<LoadedContent, RunError> {
             info!("Loading: {}", file.display());
 
-            let content_type = get_content_type(&file, &config.content_dir);
+            let content_type = get_content_type(&file, &config.site.content_dir);
             let content = load_content(&file)?;
             let html = convert_content(&content, file.clone())?;
 
-            let mut output_path = get_output_path(&file, &config.content_dir, &config.output_dir);
-            if let Some(ct_config) = config.content_types.get(&content_type) {
+            let mut output_path =
+                get_output_path(&file, &config.site.content_dir, &config.site.output_dir);
+            if let Some(ct_config) = config.site.content_types.get(&content_type) {
                 if ct_config.output_naming.as_deref() == Some("date") {
                     output_path = add_date_prefix(output_path, &content.meta.date);
                 }
@@ -85,7 +86,7 @@ pub(crate) fn run(cli: Cli) -> Result<(), RunError> {
                 output_path,
             })
         })
-        .collect::<Result<Vec<_>, _>>()?; // ✅ Collect Results, fail fast on error
+        .collect::<Result<Vec<_>, _>>()?; // Collect Results, fail fast on error
 
     info!(
         "Loaded {} files in {:?}",
@@ -96,7 +97,6 @@ pub(crate) fn run(cli: Cli) -> Result<(), RunError> {
     // 3. Write individual pages
     //
     for loaded in &loaded_contents {
-        // ✅ Now loaded is &LoadedContent
         info!(
             "Rendering '{}' ({} -> {})",
             loaded.content.meta.title,
@@ -109,7 +109,7 @@ pub(crate) fn run(cli: Cli) -> Result<(), RunError> {
             &loaded.html,
             &loaded.content.meta,
             &config,
-            &config.template_dir,
+            &config.site.template_dir,
             &content_template,
         )?;
         write_output_file(&loaded.output_path, &rendered)?;
@@ -117,7 +117,7 @@ pub(crate) fn run(cli: Cli) -> Result<(), RunError> {
 
     // 4. Render content type indexes
     //
-    for (content_type, v) in config.content_types.iter() {
+    for (content_type, v) in config.site.content_types.iter() {
         info!(
             "Content type: {} -> Index Template: {:?}",
             content_type, v.index_template
@@ -130,7 +130,7 @@ pub(crate) fn run(cli: Cli) -> Result<(), RunError> {
 
         let index_rendered = render_index_from_loaded(&config, &v.index_template, filtered)?;
 
-        let output_path = PathBuf::from(&config.output_dir)
+        let output_path = PathBuf::from(&config.site.output_dir)
             .join(content_type)
             .join("index.html");
 
@@ -141,12 +141,12 @@ pub(crate) fn run(cli: Cli) -> Result<(), RunError> {
     //
     let site_index_rendered = render_index_from_loaded(
         &config,
-        &config.site_index_template,
+        &config.site.site_index_template,
         loaded_contents.iter().collect(),
     )?;
 
     write_output_file(
-        &PathBuf::from(&config.output_dir).join("index.html"),
+        &PathBuf::from(&config.site.output_dir).join("index.html"),
         &site_index_rendered,
     )?;
 

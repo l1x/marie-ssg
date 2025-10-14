@@ -230,6 +230,7 @@ pub(crate) fn get_output_path(file: &PathBuf, content_dir: &str, output_dir: &st
 /// - This function only returns the template path; it does not validate if the template file exists
 pub(crate) fn get_content_type_template(config: &Config, content_type: &str) -> String {
     config
+        .site
         .content_types
         .get(content_type)
         .map(|ct| ct.content_template.as_str())
@@ -268,16 +269,19 @@ mod tests {
         );
 
         Config {
-            title: "Test Site".to_string(),
-            tagline: "Hello world".to_string(),
-            domain: "test.com".to_string(),
-            author: "Test Author".to_string(),
-            output_dir: "out".to_string(),
-            content_dir: "src/content".to_string(),
-            template_dir: "templates".to_string(),
-            static_dir: "static".to_string(),
-            site_index_template: "site_index.html".to_string(),
-            content_types,
+            site: crate::config::SiteConfig {
+                title: "Test Site".to_string(),
+                tagline: "Hello world".to_string(),
+                domain: "test.com".to_string(),
+                author: "Test Author".to_string(),
+                output_dir: "out".to_string(),
+                content_dir: "src/content".to_string(),
+                template_dir: "templates".to_string(),
+                static_dir: "static".to_string(),
+                site_index_template: "site_index.html".to_string(),
+                content_types,
+            },
+            dynamic: HashMap::new(),
         }
     }
 

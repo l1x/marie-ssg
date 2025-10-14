@@ -10,6 +10,16 @@ use crate::Cli;
 
 #[derive(Debug, Deserialize, Serialize)]
 pub(crate) struct Config {
+    /// Site
+    pub site: SiteConfig,
+
+    /// Custom variables accessible in templates
+    #[serde(default)]
+    pub dynamic: HashMap<String, String>,
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+pub(crate) struct SiteConfig {
     /// Title of the website or application
     pub title: String,
     /// Tagline message
@@ -29,7 +39,7 @@ pub(crate) struct Config {
     /// Template for the site-wide index page
     pub site_index_template: String,
     /// After content dir is scanned this is filled up with the different content types found
-    #[serde(flatten)]
+    #[serde(default)]
     pub content_types: HashMap<String, ContentTypeConfig>,
 }
 

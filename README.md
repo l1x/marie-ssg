@@ -4,6 +4,8 @@ Actually Marie SSSSG (super simple static site generator)
 
 ## Version History
 
+### v0.3.0 (2025-10-14) -
+
 ### v0.2.0 (2025-10-10) - Performance & Observability
 
 **Performance Improvements:**
@@ -38,6 +40,18 @@ Actually Marie SSSSG (super simple static site generator)
 - Static asset copying (CSS, images, fonts)
 - Date-prefixed output naming (configurable per content type)
 - Clean separation of concerns across modules
+
+## Running tasks in the repo
+
+```bash
+➜  mise tasks --all
+Name                     Description
+build-dev                Building the development version
+build-prod               Building the development version
+build-prod-with-timings  Building the development version
+lint                     Running linting
+tests                    Running tests
+```
 
 ## Code organization
 
