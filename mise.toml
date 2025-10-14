@@ -24,3 +24,23 @@ run = "cargo build --release"
 [tasks.build-prod-with-timings]
 description = "Building the development version"
 run = "cargo build --release --timings"
+
+[tasks.show-issues]
+description = "List all open issues"
+run = "bd list --status open"
+
+[tasks.show-ready]
+description = "Show ready work (no blockers)"
+run = "bd ready"
+
+[tasks.show-blocked]
+description = "Show blocked issues"
+run = "bd blocked"
+
+[tasks.show-issue-stats]
+description = "Show issue statistics"
+run = "bd stats"
+
+[tasks.show-issue-tree]
+description = "Show dependency tree for an issue (use: mise run issue-tree -- bd-1)"
+run = "bd dep tree"
