@@ -4,7 +4,27 @@ Actually Marie SSSSG (super simple static site generator)
 
 ## Version History
 
-### v0.3.0 (2025-10-14) -
+### v0.3.0 (2025-10-14) - Configuration Changes
+
+**Performance Improvements:**
+
+- **Implemented template caching**: Added `OnceLock<Environment>` to reuse template environment instead of recreating for each render
+- **Added build tooling**: Introduced `mise.toml` with standardized build tasks (lint, test, build-dev/prod)
+- **Removed manual progress markers**: Cleaned up debug comments from parallel processing implementation
+
+**Configuration Architecture:**
+
+- **Introduced nested config structure**: Created `SiteConfig` struct to organize site settings under `config.site.*`
+- **Added dynamic variables**: New `config.dynamic` HashMap for custom template variables
+- **Changed content_types handling**: Switched from `#[serde(flatten)]` to `#[serde(default)]` for better default handling
+
+**Documentation Transformation:**
+
+- **Completely restructured README**:
+  - Added comprehensive version history with detailed v0.2.0 performance improvements
+  - Added development workflow section showing mise tasks
+  - Removed 50+ line code review todo list (moved to internal documentation)
+- **Added project description**: "Actually Marie SSSSG (super simple static site generator)"
 
 ### v0.2.0 (2025-10-10) - Performance & Observability
 
