@@ -41,6 +41,9 @@ pub(crate) struct SiteConfig {
     /// After content dir is scanned this is filled up with the different content types found
     #[serde(default)]
     pub content_types: HashMap<String, ContentTypeConfig>,
+    /// Static files that should be copied to the output root (e.g., favicon.ico, robots.txt)
+    #[serde(default)]
+    pub root_static: RootStaticConfig,
 }
 
 #[derive(Error, Debug)]
@@ -60,6 +63,20 @@ pub(crate) struct ContentTypeConfig {
     #[serde(default)]
     pub output_naming: Option<String>, // Options: "default" or "date"
 }
+
+/// Configuration for static files that should be copied to the output root.
+///
+/// Key: Output filename (e.g., "favicon.ico", "robots.txt") - use quoted strings for filenames with dots
+/// Value: Source path relative to static directory (e.g., "favicon.ico", "seo/robots.txt")
+///
+/// Example TOML configuration:
+/// ```toml
+/// [site.root_static]
+/// "favicon.ico" = "favicon.ico"
+/// "robots.txt" = "robots.txt"
+/// "sitemap.xml" = "seo/sitemap.xml"
+/// ```
+pub(crate) type RootStaticConfig = HashMap<String, String>;
 
 #[instrument(skip(cli), fields(path = %cli.config))]
 pub(crate) fn load_config(cli: &Cli) -> Result<Config, ConfigError> {

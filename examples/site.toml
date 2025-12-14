@@ -2,3 +2,12 @@ author = "author"
 output_dir = "output_dir"
 title = "title"
 domain = "domain"
+tagline = "A simple static site"
+content_dir = "content"
+template_dir = "templates"
+static_dir = "static"
+site_index_template = "site_index.html"
+
+[site.root_static]
+"favicon.ico" = "favicon.ico"
+"robots.txt" = "robots.txt"

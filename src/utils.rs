@@ -280,6 +280,7 @@ mod tests {
                 static_dir: "static".to_string(),
                 site_index_template: "site_index.html".to_string(),
                 content_types,
+                root_static: HashMap::new(),
             },
             dynamic: HashMap::new(),
         }
