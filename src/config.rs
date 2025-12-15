@@ -1,12 +1,8 @@
 // src/config.rs
 
 use serde::{Deserialize, Serialize};
-use std::io::ErrorKind;
 use std::{collections::HashMap, fs};
 use thiserror::Error;
-use tracing::{info, instrument};
-
-use crate::Cli;
 
 #[derive(Debug, Deserialize, Serialize)]
 pub(crate) struct Config {
@@ -16,6 +12,18 @@ pub(crate) struct Config {
     /// Custom variables accessible in templates
     #[serde(default)]
     pub dynamic: HashMap<String, String>,
+}
+
+impl Config {
+    pub fn load_from_file(path: &str) -> Result<Self, Box<dyn std::error::Error>> {
+        let content = fs::read_to_string(path)?;
+        Self::from_str(&content)
+    }
+
+    // Helper for tests - parses TOML from string
+    fn from_str(content: &str) -> Result<Self, Box<dyn std::error::Error>> {
+        Ok(basic_toml::from_str(content)?)
+    }
 }
 
 #[derive(Debug, Deserialize, Serialize)]
@@ -43,7 +51,7 @@ pub(crate) struct SiteConfig {
     pub content_types: HashMap<String, ContentTypeConfig>,
     /// Static files that should be copied to the output root (e.g., favicon.ico, robots.txt)
     #[serde(default)]
-    pub root_static: RootStaticConfig,
+    pub root_static: HashMap<String, String>,
 }
 
 #[derive(Error, Debug)]
@@ -51,7 +59,7 @@ pub(crate) enum ConfigError {
     #[error("IO error reading config file: {0}")]
     Io(#[from] std::io::Error),
     #[error("TOML parsing error in config file: {0}")]
-    TomlParse(#[from] toml::de::Error),
+    TomlParse(#[from] basic_toml::Error),
     #[error("Config file not found: {0}")]
     FileNotFound(String),
 }
@@ -62,37 +70,4 @@ pub(crate) struct ContentTypeConfig {
     pub content_template: String,
     #[serde(default)]
     pub output_naming: Option<String>, // Options: "default" or "date"
-}
-
-/// Configuration for static files that should be copied to the output root.
-///
-/// Key: Output filename (e.g., "favicon.ico", "robots.txt") - use quoted strings for filenames with dots
-/// Value: Source path relative to static directory (e.g., "favicon.ico", "seo/robots.txt")
-///
-/// Example TOML configuration:
-/// ```toml
-/// [site.root_static]
-/// "favicon.ico" = "favicon.ico"
-/// "robots.txt" = "robots.txt"
-/// "sitemap.xml" = "seo/sitemap.xml"
-/// ```
-pub(crate) type RootStaticConfig = HashMap<String, String>;
-
-#[instrument(skip(cli), fields(path = %cli.config))]
-pub(crate) fn load_config(cli: &Cli) -> Result<Config, ConfigError> {
-    // Read the config file content, with a specific check for a missing file.
-    let config_content = fs::read_to_string(&cli.config).map_err(|e| {
-        if e.kind() == ErrorKind::NotFound {
-            // Provide the specific, user-friendly error.
-            ConfigError::FileNotFound(cli.config.clone())
-        } else {
-            // For all other IO errors, use the generic `From<io::Error>` conversion.
-            e.into()
-        }
-    })?;
-
-    // Parse TOML config using the `?` operator for concise error handling.
-    let config: Config = toml::from_str(&config_content)?;
-    info!("TOML configuration parsed successfully.");
-    Ok(config)
 }

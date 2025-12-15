@@ -86,3 +86,10 @@ lost_and_found/
 # You generally want to track this file, so ignoring it is unusual.
 # Uncomment the line below if you truly wish to ignore all .keep files.
 # .keep
+.beads/daemon.lock 
+.beads/daemon.log
+.beads/.local_version
+.beads/marie-ssg.db-shm
+.beads/marie-ssg.db-wal
+.beads/metadata.json
+

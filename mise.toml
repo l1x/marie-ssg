@@ -1,13 +1,14 @@
 # tools
 [tools]
+node = "lts"
 rust = "1.90.0"
 
 # env
 
 # tasks
 [tasks.lint]
-description = "Running linting"
-run = "cargo lint"
+description = "Lint with Clippy, failing on warnings"
+run = "cargo clippy -- -D warnings"
 
 [tasks.tests]
 description = "Running tests"

@@ -1,12 +1,11 @@
 // src/main.rs
-
-use clap::Parser;
+use argh::FromArgs;
 use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
 use std::path::PathBuf;
 use tracing::{debug, instrument};
 use tracing::{error, info};
 
-use crate::config::load_config;
+use crate::config::Config;
 use crate::content::{Content, convert_content, load_content};
 use crate::error::RunError;
 use crate::output::{copy_static_files, write_output_file};
@@ -23,12 +22,16 @@ mod output;
 mod template;
 mod utils;
 
-#[derive(Parser, Debug)]
-#[command(author, version, about, long_about = None)]
-struct Cli {
-    /// Path to the config file
-    #[arg(short, long, default_value = "site.toml")]
-    config: String,
+fn default_config_file() -> String {
+    "site.toml".to_string()
+}
+
+#[derive(FromArgs, Debug)]
+/// A command line interface
+struct Argz {
+    /// path to the config file
+    #[argh(option, short = 'c', default = "default_config_file()")]
+    config_file: String,
 }
 
 // Application Logic
@@ -43,10 +46,12 @@ pub(crate) struct LoadedContent {
 
 /// The main entry point for the application logic.
 #[instrument(skip_all)]
-pub(crate) fn run(cli: Cli) -> Result<(), RunError> {
+pub(crate) fn run(argz: Argz) -> Result<(), RunError> {
     // loading config
-    let config = load_config(&cli)?;
-    info!(?config, "Configuration loaded successfully");
+    debug!("Args: {:?}", argz);
+    info!("Config file: {}", argz.config_file);
+
+    let config = Config::load_from_file(&argz.config_file).expect("Failed to load configuration");
 
     // 0. Copy static files first
     //
@@ -161,9 +166,9 @@ fn main() {
     info!("Starting up...");
 
     // Parse CLI arguments
-    let cli = Cli::parse();
+    let argz: Argz = argh::from_env();
 
-    match run(cli) {
+    match run(argz) {
         Ok(_ok) => info!("ok"),
         Err(e) => error!("{:?}", e),
     }
