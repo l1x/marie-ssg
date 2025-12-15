@@ -8,7 +8,7 @@
 // - Template rendering
 // - Date-based sorting
 
-use assert_cmd::Command;
+use assert_cmd::cargo::cargo_bin_cmd;
 use predicates::prelude::*;
 use scraper::{Html, Selector};
 use std::fs;
@@ -53,12 +53,13 @@ fn copy_dir_recursive(src: &Path, dst: &Path) -> std::io::Result<()> {
 fn run_ssg(site_dir: &Path) -> assert_cmd::assert::Assert {
     let config_path = site_dir.join("site.toml");
 
-    Command::cargo_bin("marie-ssg")
-        .unwrap()
-        .current_dir(site_dir) // Run from site directory so relative paths work
+    cargo_bin_cmd!("marie-ssg") // ✅ Returns Command directly
+        // .unwrap()  <-- DELETE THIS LINE
+        .current_dir(site_dir)
         .arg("-c")
-        .arg(config_path.file_name().unwrap()) // Use just the filename
+        .arg(config_path.file_name().unwrap())
         .assert()
+        .success()
 }
 
 /// Helper to parse HTML and select elements
@@ -378,8 +379,7 @@ fn test_invalid_config_fails_gracefully() {
     // Create invalid config
     fs::write(&invalid_config, "this is not valid toml [[[").unwrap();
 
-    Command::cargo_bin("marie-ssg")
-        .unwrap()
+    cargo_bin_cmd!("marie-ssg")
         .arg("-c")
         .arg(&invalid_config)
         .assert()
