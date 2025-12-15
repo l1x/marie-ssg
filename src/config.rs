@@ -60,8 +60,6 @@ pub(crate) enum ConfigError {
     Io(#[from] std::io::Error),
     #[error("TOML parsing error in config file: {0}")]
     TomlParse(#[from] basic_toml::Error),
-    #[error("Config file not found: {0}")]
-    FileNotFound(String),
 }
 
 #[derive(Debug, Deserialize, Serialize)]

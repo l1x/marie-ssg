@@ -34,7 +34,7 @@ use crate::config::Config;
 /// - If the file is directly in the content directory (no subdirectory), returns "page"
 /// - The content directory prefix is stripped case-sensitively
 #[rustfmt::skip]
-pub(crate) fn get_content_type(file: &PathBuf, content_dir: &str) -> String {
+pub(crate) fn get_content_type(file: &Path, content_dir: &str) -> String {
     file.strip_prefix(content_dir)                              // removes src/content
         .ok()                                                   // Convert Result to Option
         .and_then(|rel_path| rel_path.components().next())      // gets the next dir (projects)
@@ -82,16 +82,15 @@ pub(crate) fn get_content_type(file: &PathBuf, content_dir: &str) -> String {
 pub(crate) fn find_markdown_files(content_dir: &str) -> Vec<PathBuf> {
     let mut markdown_files = Vec::new();
 
-    let walkdir = WalkDir::new(&content_dir);
+    let walkdir = WalkDir::new(content_dir);
 
     for entry in walkdir.into_iter().filter_map(Result::ok) {
         let path = entry.path();
-        if entry.file_type().is_file() {
-            if let Some(ext) = path.extension() {
-                if ext == "md" || ext == "markdown" {
-                    markdown_files.push(path.to_path_buf());
-                }
-            }
+        if entry.file_type().is_file()
+            && let Some(ext) = path.extension()
+            && (ext == "md" || ext == "markdown")
+        {
+            markdown_files.push(path.to_path_buf());
         }
     }
 
@@ -159,7 +158,7 @@ pub(crate) fn add_date_prefix(output_path: PathBuf, date: &DateTime<FixedOffset>
 /// - Changes file extension from `.md`/`.markdown` to `.html`
 /// - Returns "error.html" path if the file is not under the content directory
 /// - Handles both relative and absolute paths correctly
-pub(crate) fn get_output_path(file: &PathBuf, content_dir: &str, output_dir: &str) -> PathBuf {
+pub(crate) fn get_output_path(file: &Path, content_dir: &str, output_dir: &str) -> PathBuf {
     file.strip_prefix(content_dir)
         .map(|rel_path| {
             PathBuf::from(output_dir)

@@ -49,7 +49,7 @@ pub(crate) fn copy_static_files(config: &Config) -> Result<(), StaticError> {
             .strip_prefix(static_dir)
             .map_err(|e| StaticError::Io {
                 path: source_path.to_path_buf(),
-                source: std::io::Error::new(ErrorKind::Other, e),
+                source: std::io::Error::other(e),
             })?;
 
         // Skip files that are configured as root_static

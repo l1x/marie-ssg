@@ -2,7 +2,7 @@
 
 use chrono::{DateTime, FixedOffset};
 use serde::{Deserialize, Serialize};
-use std::{fs, path::PathBuf};
+use std::{fs, path::{Path, PathBuf}};
 use thiserror::Error;
 use tracing::error;
 
@@ -153,7 +153,7 @@ pub(crate) fn load_content(path: &PathBuf) -> Result<Content, ContentError> {
 /// let meta = load_metadata(&PathBuf::from("content/blog/post.md"))?;
 /// println!("Author: {}", meta.author);
 /// ```
-pub(crate) fn load_metadata(markdown_path: &PathBuf) -> Result<ContentMeta, ContentError> {
+pub(crate) fn load_metadata(markdown_path: &Path) -> Result<ContentMeta, ContentError> {
     // hello-world.md" -> "hello-world.meta.toml"
     let meta_path = markdown_path.with_extension("meta.toml");
     let meta_content = fs::read_to_string(&meta_path).map_err(|e| ContentError::Io {

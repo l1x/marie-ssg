@@ -71,16 +71,16 @@ pub(crate) fn run(argz: Argz) -> Result<(), RunError> {
         .map(|file| -> Result<LoadedContent, RunError> {
             info!("Loading: {}", file.display());
 
-            let content_type = get_content_type(&file, &config.site.content_dir);
-            let content = load_content(&file)?;
+            let content_type = get_content_type(file, &config.site.content_dir);
+            let content = load_content(file)?;
             let html = convert_content(&content, file.clone())?;
 
             let mut output_path =
-                get_output_path(&file, &config.site.content_dir, &config.site.output_dir);
-            if let Some(ct_config) = config.site.content_types.get(&content_type) {
-                if ct_config.output_naming.as_deref() == Some("date") {
-                    output_path = add_date_prefix(output_path, &content.meta.date);
-                }
+                get_output_path(file, &config.site.content_dir, &config.site.output_dir);
+            if let Some(ct_config) = config.site.content_types.get(&content_type)
+                && ct_config.output_naming.as_deref() == Some("date")
+            {
+                output_path = add_date_prefix(output_path, &content.meta.date);
             }
 
             Ok(LoadedContent {
