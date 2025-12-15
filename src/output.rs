@@ -11,6 +11,36 @@ use walkdir::WalkDir;
 
 use crate::{config::Config, error::StaticError};
 
+/// Checks if a file should be copied by comparing metadata.
+/// Returns true if copy is needed (dest doesn't exist or differs from source).
+fn should_copy_file(source: &Path, dest: &Path) -> bool {
+    // If destination doesn't exist, we need to copy
+    let dest_meta = match fs::metadata(dest) {
+        Ok(meta) => meta,
+        Err(_) => return true,
+    };
+
+    // Get source metadata
+    let source_meta = match fs::metadata(source) {
+        Ok(meta) => meta,
+        Err(_) => return true, // If we can't read source, try to copy anyway
+    };
+
+    // Compare file sizes first (quick check)
+    if source_meta.len() != dest_meta.len() {
+        return true;
+    }
+
+    // Compare modification times
+    let source_mtime = source_meta.modified().ok();
+    let dest_mtime = dest_meta.modified().ok();
+
+    match (source_mtime, dest_mtime) {
+        (Some(src), Some(dst)) => src > dst, // Copy if source is newer
+        _ => true,                           // Copy if we can't determine
+    }
+}
+
 #[derive(Error, Debug)]
 pub(crate) enum WriteError {
     #[error("I/O error processing static file {path:?}: {source}")]
@@ -66,6 +96,12 @@ pub(crate) fn copy_static_files(config: &Config) -> Result<(), StaticError> {
 
         let dest_path = output_static_dir.join(relative_path);
 
+        // Skip if file hasn't changed
+        if !should_copy_file(source_path, &dest_path) {
+            debug!("Skipping unchanged static file: {:?}", source_path);
+            continue;
+        }
+
         // Create parent directories if needed
         if let Some(parent) = dest_path.parent() {
             fs::create_dir_all(parent).map_err(|e| StaticError::Io {
@@ -112,6 +148,15 @@ fn copy_root_static_files(config: &Config) -> Result<(), StaticError> {
         }
 
         let dest_path = output_dir.join(output_filename);
+
+        // Skip if file hasn't changed
+        if !should_copy_file(&source_path, &dest_path) {
+            debug!(
+                "Skipping unchanged root static file: {:?}",
+                source_path
+            );
+            continue;
+        }
 
         // Create parent directories if needed (though typically not needed for root files)
         if let Some(parent) = dest_path.parent() {
@@ -255,6 +300,96 @@ mod tests {
 
         let error_msg = result.unwrap_err().to_string();
         assert!(error_msg.contains("Root static file not found"));
+    }
+
+    #[test]
+    fn test_should_copy_file_dest_not_exists() {
+        let temp_dir = tempdir().unwrap();
+        let source = temp_dir.path().join("source.txt");
+        let dest = temp_dir.path().join("dest.txt");
+
+        File::create(&source)
+            .unwrap()
+            .write_all(b"content")
+            .unwrap();
+
+        // Dest doesn't exist - should copy
+        assert!(should_copy_file(&source, &dest));
+    }
+
+    #[test]
+    fn test_should_copy_file_identical() {
+        let temp_dir = tempdir().unwrap();
+        let source = temp_dir.path().join("source.txt");
+        let dest = temp_dir.path().join("dest.txt");
+
+        File::create(&source)
+            .unwrap()
+            .write_all(b"content")
+            .unwrap();
+
+        // Copy the file
+        fs::copy(&source, &dest).unwrap();
+
+        // Files are identical - should not copy
+        assert!(!should_copy_file(&source, &dest));
+    }
+
+    #[test]
+    fn test_should_copy_file_different_size() {
+        let temp_dir = tempdir().unwrap();
+        let source = temp_dir.path().join("source.txt");
+        let dest = temp_dir.path().join("dest.txt");
+
+        File::create(&source)
+            .unwrap()
+            .write_all(b"new content")
+            .unwrap();
+        File::create(&dest)
+            .unwrap()
+            .write_all(b"old")
+            .unwrap();
+
+        // Different sizes - should copy
+        assert!(should_copy_file(&source, &dest));
+    }
+
+    #[test]
+    fn test_copy_static_files_skips_unchanged() {
+        let temp_dir = tempdir().unwrap();
+        let static_dir = temp_dir.path().join("static");
+        let output_dir = temp_dir.path().join("out");
+
+        fs::create_dir_all(&static_dir).unwrap();
+        fs::create_dir_all(output_dir.join("static")).unwrap();
+
+        // Create source file
+        let css_path = static_dir.join("style.css");
+        File::create(&css_path)
+            .unwrap()
+            .write_all(b"body { color: red; }")
+            .unwrap();
+
+        // Pre-create identical destination file
+        let dest_css = output_dir.join("static/style.css");
+        fs::copy(&css_path, &dest_css).unwrap();
+
+        let mut config = create_test_config_with_root_static();
+        config.site.static_dir = static_dir.to_string_lossy().to_string();
+        config.site.output_dir = output_dir.to_string_lossy().to_string();
+        config.site.root_static.clear();
+
+        // Get mtime before
+        let mtime_before = fs::metadata(&dest_css).unwrap().modified().unwrap();
+
+        // Small delay to ensure mtime would change if file was copied
+        std::thread::sleep(std::time::Duration::from_millis(10));
+
+        copy_static_files(&config).unwrap();
+
+        // mtime should be unchanged (file was skipped)
+        let mtime_after = fs::metadata(&dest_css).unwrap().modified().unwrap();
+        assert_eq!(mtime_before, mtime_after);
     }
 
     #[test]
