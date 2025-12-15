@@ -116,6 +116,23 @@ templates/
 - Dynamically loads all templates: Scans the template directory and loads all .html files, using the filename (without extension) as the template name.
 - Content-type-based templates: Uses the content type directory name as the default template name (e.g., content in posts/ uses post.html template).
 - Per-content template override: Allows specifying a different template in the metadata of individual content files.
-- Automatic index generation: Creates index pages for each content type using [content_type]\_index.html templates (e.g., posts_index.html).
+- Automatic index generation: Creates index pages for each content type using [content_type]_index.html templates (e.g., posts_index.html).
 - Site-wide index: Generates a main site index using site_index.html template.
 - Flexible structure: No hardcoded template names - everything is determined by the file structure and optional metadata.
+
+## Project management
+
+We track work with `bd`, the Birdseye CLI. Helpful commands:
+
+```bash
+bd list --status open         # show open tickets
+bd ready                      # list work with no blockers
+bd update <id> --status X     # move ticket through the workflow
+```
+
+### Active tickets
+
+- `mar-tap` – Reuse cached template environment for page renders.
+- `mar-ex5` – Stream markdown processing directly into Rayon.
+- `mar-3xs` – Skip copying unchanged static assets during builds.
+
