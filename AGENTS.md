@@ -1,54 +1,79 @@
 # Marie SSG - Agent Guidelines
 
+## Project Overview
+
+Marie SSG (Super Simple Static Site Generator) is a Rust-based static site generator that converts markdown files with TOML metadata into HTML pages using Jinja-style templates.
+
 ## Build Commands
-- `mise run lint` - Run cargo lint (code formatting and style checks)
-- `mise run tests` - Run all tests with cargo test -- --nocapture
-- `cargo test <test_name>` - Run single test
-- `mise run build-dev` - Development build with cargo build
-- `mise run build-prod` - Production optimized build with cargo build --release
 
-## Code Style Guidelines
+```bash
+mise run lint                       # Run cargo lint (formatting + style checks)
+mise run tests                      # Run all tests with --nocapture
+mise run build-dev                  # Development build
+mise run build-prod                 # Release build (optimized for size)
+cargo test <test_name>              # Run a single test
+bd list                             # List open tickets
+bd ready                            # to find available work
+bd create                           # for new issues,
+bd update <id> --status=in_progress # to claim work
+bd close <id>                       # closing ticket
+```
 
-### Imports & Organization
-- Group imports: std crates first, then external crates, then internal modules
-- Use `use crate::*` for internal module imports
-- Keep imports at file top, organized alphabetically within groups
+## Architecture
 
-### Formatting & Types
-- Use `rustfmt` for formatting (enforced via cargo lint)
-- Prefer explicit types in function signatures and struct fields
-- Use `pub(crate)` for internal visibility, `pub` for public API
-- Struct fields use `pub` when data needs to be accessed externally
+The SSG follows a pipeline architecture:
 
-### Naming Conventions
-- Functions: snake_case with descriptive names
-- Structs/Enums: PascalCase with clear purpose
-- Variables: snake_case, prefer descriptive over abbreviated
-- Constants: SCREAMING_SNAKE_CASE
-- File names: snake_case matching module names
+1. **Config loading** (`config.rs`) - Parses `site.toml` into `Config` struct with nested `SiteConfig`
+2. **Content discovery** (`utils.rs`) - Finds markdown files in content directory
+3. **Parallel content loading** (`content.rs` + `main.rs`) - Uses Rayon to load/convert markdown in parallel
+4. **Template rendering** (`template.rs`) - Renders HTML using minijinja with template caching via `OnceLock`
+5. **Output writing** (`output.rs`) - Writes rendered HTML and copies static files
 
-### Error Handling
-- Use `thiserror` for custom error types with proper error messages
-- Implement `From` traits for error conversions
-- Use `Result<T, ErrorType>` for fallible operations
-- Include context in error messages (file paths, operation details)
-- Use `#[source]` attribute for error chaining
+Key data flow:
 
-### Documentation
-- Add doc comments (`///`) for all public structs, functions, and types
-- Include examples in doc comments where helpful
-- Use `#[instrument(skip_all)]` tracing for key functions
-- Add inline comments for complex logic only
+- `LoadedContent` struct (in `main.rs`) holds the loaded content, converted HTML, content type, and output path
+- Content is loaded once and reused for both individual pages and index generation
+- Template environment is cached globally to avoid recreation per render
 
-### Architecture Patterns
-- Separate concerns into distinct modules (config, content, template, etc.)
-- Use `rayon` for parallel processing of independent operations
-- Implement proper error propagation with `?` operator
-- Use `tracing` for structured logging with appropriate levels
-- Prefer composition over inheritance
+## Content Type System
 
-### Testing
-- Write unit tests for core logic in separate `#[cfg(test)]` modules
-- Use `tempfile` for temporary file/directory creation in tests
-- Include integration tests for end-to-end workflows
-- Use `criterion` for performance benchmarks when relevant
+Content types are determined by directory structure under `content/`:
+
+- `content/posts/*.md` → content type "posts"
+- `content/pages/*.md` → content type "pages"
+
+Each content type can have:
+
+- A content template (e.g., `post.html`)
+- An index template (e.g., `posts_index.html`)
+- Optional date-prefix output naming
+
+## Configuration Structure
+
+```toml
+# site.toml
+author = "..."
+title = "..."
+domain = "..."
+tagline = "..."
+content_dir = "content"
+template_dir = "templates"
+static_dir = "static"
+output_dir = "output"
+site_index_template = "site_index.html"
+
+[site.root_static]
+"favicon.ico" = "favicon.ico"
+"robots.txt" = "robots.txt"
+
+[dynamic]
+# Custom template variables
+```
+
+## Code Style
+
+- Group imports: std first, external crates, then internal modules (`use crate::*`)
+- Use `thiserror` for custom error types with `#[source]` for error chaining
+- Use `tracing` for logging with `#[instrument(skip_all)]` on key functions
+- Prefer `pub(crate)` for internal visibility
+- Use Rayon for parallel processing of independent operations

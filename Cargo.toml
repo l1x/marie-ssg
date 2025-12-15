@@ -17,11 +17,11 @@ tracing-subscriber = { version = "0" }
 walkdir = { version = "2" }
 
 [dev-dependencies]
-criterion = { version = "0", features = ["html_reports"] }
-tempfile = { version = "*" }
-scraper = { version = "0.25" }
 assert_cmd = { version = "2" }
+criterion = { version = "0", features = ["html_reports"] }
 predicates = { version = "3" }
+scraper = { version = "0" }
+tempfile = { version = "3" }
 
 [profile.bench]
 lto = "thin"
