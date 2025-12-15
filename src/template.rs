@@ -78,3 +78,7 @@ pub(crate) fn render_html(
 
     tmpl.render(context)
 }
+
+// Note: Template rendering functions use a static OnceLock<Environment> which
+// makes unit testing difficult since the template directory is set once globally.
+// These functions are better tested via integration tests that run the full pipeline.

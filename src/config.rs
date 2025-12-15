@@ -21,7 +21,7 @@ impl Config {
     }
 
     // Helper for tests - parses TOML from string
-    fn from_str(content: &str) -> Result<Self, Box<dyn std::error::Error>> {
+    pub(crate) fn from_str(content: &str) -> Result<Self, Box<dyn std::error::Error>> {
         Ok(basic_toml::from_str(content)?)
     }
 }
@@ -68,4 +68,178 @@ pub(crate) struct ContentTypeConfig {
     pub content_template: String,
     #[serde(default)]
     pub output_naming: Option<String>, // Options: "default" or "date"
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::io::Write;
+    use tempfile::tempdir;
+
+    fn minimal_config_toml() -> &'static str {
+        r#"
+[site]
+title = "Test Site"
+tagline = "A test tagline"
+domain = "example.com"
+author = "Test Author"
+output_dir = "output"
+content_dir = "content"
+template_dir = "templates"
+static_dir = "static"
+site_index_template = "index.html"
+"#
+    }
+
+    #[test]
+    fn test_config_from_str_minimal() {
+        let config = Config::from_str(minimal_config_toml()).unwrap();
+
+        assert_eq!(config.site.title, "Test Site");
+        assert_eq!(config.site.tagline, "A test tagline");
+        assert_eq!(config.site.domain, "example.com");
+        assert_eq!(config.site.author, "Test Author");
+        assert_eq!(config.site.output_dir, "output");
+        assert_eq!(config.site.content_dir, "content");
+        assert!(config.site.content_types.is_empty());
+        assert!(config.site.root_static.is_empty());
+        assert!(config.dynamic.is_empty());
+    }
+
+    #[test]
+    fn test_config_from_str_with_content_types() {
+        let toml = r#"
+[site]
+title = "Test Site"
+tagline = "A test tagline"
+domain = "example.com"
+author = "Test Author"
+output_dir = "output"
+content_dir = "content"
+template_dir = "templates"
+static_dir = "static"
+site_index_template = "index.html"
+
+[site.content_types.posts]
+index_template = "posts_index.html"
+content_template = "post.html"
+output_naming = "date"
+
+[site.content_types.pages]
+index_template = "pages_index.html"
+content_template = "page.html"
+"#;
+
+        let config = Config::from_str(toml).unwrap();
+
+        assert_eq!(config.site.content_types.len(), 2);
+
+        let posts = config.site.content_types.get("posts").unwrap();
+        assert_eq!(posts.index_template, "posts_index.html");
+        assert_eq!(posts.content_template, "post.html");
+        assert_eq!(posts.output_naming, Some("date".to_string()));
+
+        let pages = config.site.content_types.get("pages").unwrap();
+        assert_eq!(pages.index_template, "pages_index.html");
+        assert_eq!(pages.content_template, "page.html");
+        assert_eq!(pages.output_naming, None);
+    }
+
+    #[test]
+    fn test_config_from_str_with_dynamic() {
+        let toml = r#"
+[site]
+title = "Test Site"
+tagline = "A test tagline"
+domain = "example.com"
+author = "Test Author"
+output_dir = "output"
+content_dir = "content"
+template_dir = "templates"
+static_dir = "static"
+site_index_template = "index.html"
+
+[dynamic]
+github_url = "https://github.com/user"
+twitter_handle = "@user"
+"#;
+
+        let config = Config::from_str(toml).unwrap();
+
+        assert_eq!(config.dynamic.len(), 2);
+        assert_eq!(
+            config.dynamic.get("github_url").unwrap(),
+            "https://github.com/user"
+        );
+        assert_eq!(config.dynamic.get("twitter_handle").unwrap(), "@user");
+    }
+
+    #[test]
+    fn test_config_from_str_invalid_toml() {
+        let invalid = "this is not valid toml [[[";
+        let result = Config::from_str(invalid);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_config_from_str_missing_required_field() {
+        let incomplete = r#"
+[site]
+title = "Test Site"
+"#;
+        let result = Config::from_str(incomplete);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_config_load_from_file() {
+        let temp_dir = tempdir().unwrap();
+        let config_path = temp_dir.path().join("site.toml");
+
+        let mut file = std::fs::File::create(&config_path).unwrap();
+        file.write_all(minimal_config_toml().as_bytes()).unwrap();
+
+        let config = Config::load_from_file(config_path.to_str().unwrap()).unwrap();
+
+        assert_eq!(config.site.title, "Test Site");
+        assert_eq!(config.site.domain, "example.com");
+    }
+
+    #[test]
+    fn test_config_load_from_file_not_found() {
+        let result = Config::load_from_file("/nonexistent/path/config.toml");
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_config_with_root_static() {
+        let toml = r#"
+[site]
+title = "Test Site"
+tagline = "A test tagline"
+domain = "example.com"
+author = "Test Author"
+output_dir = "output"
+content_dir = "content"
+template_dir = "templates"
+static_dir = "static"
+site_index_template = "index.html"
+
+[site.root_static]
+"favicon.ico" = "favicon.ico"
+"robots.txt" = "seo/robots.txt"
+"#;
+
+        let config = Config::from_str(toml).unwrap();
+
+        assert_eq!(config.site.root_static.len(), 2);
+        assert_eq!(
+            config.site.root_static.get("favicon.ico").unwrap(),
+            "favicon.ico"
+        );
+        assert_eq!(
+            config.site.root_static.get("robots.txt").unwrap(),
+            "seo/robots.txt"
+        );
+    }
 }
