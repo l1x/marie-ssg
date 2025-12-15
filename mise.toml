@@ -1,6 +1,5 @@
 # tools
 [tools]
-node = "lts"
 rust = "1.90.0"
 
 # env
