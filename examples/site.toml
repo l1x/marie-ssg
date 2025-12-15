@@ -1,13 +1,30 @@
-author = "author"
-output_dir = "output_dir"
-title = "title"
-domain = "domain"
-tagline = "A simple static site"
+[site]
+title = "Marie SSG Example"
+tagline = "A beautiful static site built with Marie"
+domain = "example.marie-ssg.com"
+author = "Jane Doe"
+output_dir = "output"
 content_dir = "content"
 template_dir = "templates"
 static_dir = "static"
 site_index_template = "site_index.html"
 
+[site.content_types.blog]
+index_template = "blog_index.html"
+content_template = "blog.html"
+output_naming = "date"
+
+[site.content_types.pages]
+index_template = "page_index.html"
+content_template = "page.html"
+
 [site.root_static]
 "favicon.ico" = "favicon.ico"
 "robots.txt" = "robots.txt"
+"style.css" = "style.css"
+
+[dynamic]
+github_url = "https://github.com/janedoe"
+twitter_handle = "@janedoe"
+linkedin_url = "https://linkedin.com/in/janedoe"
+email = "jane@example.com"
