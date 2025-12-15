@@ -114,7 +114,6 @@ pub(crate) fn run(argz: Argz) -> Result<(), RunError> {
             &loaded.html,
             &loaded.content.meta,
             &config,
-            &config.site.template_dir,
             &content_template,
         )?;
         write_output_file(&loaded.output_path, &rendered)?;

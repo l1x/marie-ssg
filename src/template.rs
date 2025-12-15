@@ -60,11 +60,13 @@ pub(crate) fn render_html(
     html: &str,
     meta: &ContentMeta,
     config: &Config,
-    template_dir: &str,
     content_template: &str,
 ) -> Result<String, minijinja::Error> {
-    let mut env = Environment::new();
-    env.set_loader(path_loader(template_dir));
+    let env = ENV.get_or_init(|| {
+        let mut env = Environment::new();
+        env.set_loader(path_loader(&config.site.template_dir));
+        env
+    });
 
     let tmpl = env.get_template(content_template)?;
 
