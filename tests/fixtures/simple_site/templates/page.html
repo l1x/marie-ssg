@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ meta.title }} - {{ config.site.title }}</title>
+    <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+    <header>
+        <h1 class="site-title">{{ config.site.title }}</h1>
+    </header>
+    
+    <main>
+        <article class="page">
+            <h1 class="page-title">{{ meta.title }}</h1>
+            <div class="content">
+                {{ content | safe }}
+            </div>
+        </article>
+    </main>
+    
+    <footer>
+        <p>{{ config.site.domain }}</p>
+    </footer>
+</body>
+</html>

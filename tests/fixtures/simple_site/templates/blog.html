@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ meta.title }} - {{ config.site.title }}</title>
+    <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+    <header>
+        <h1 class="site-title">{{ config.site.title }}</h1>
+        <p class="tagline">{{ config.site.tagline }}</p>
+    </header>
+    
+    <main>
+        <article class="blog-post">
+            <h1 class="post-title">{{ meta.title }}</h1>
+            <div class="post-meta">
+                <span class="author">By {{ meta.author }}</span>
+                <span class="date">{{ meta.date }}</span>
+            </div>
+            <div class="tags">
+                {% for tag in meta.tags %}
+                <span class="tag">{{ tag }}</span>
+                {% endfor %}
+            </div>
+            <div class="content">
+                {{ content | safe }}
+            </div>
+        </article>
+    </main>
+    
+    <footer>
+        <p>Author: {{ config.site.author }}</p>
+        <p>GitHub: {{ config.dynamic.github_url }}</p>
+    </footer>
+</body>
+</html>

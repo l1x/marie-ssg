@@ -19,6 +19,9 @@ walkdir = { version = "2" }
 [dev-dependencies]
 criterion = { version = "0", features = ["html_reports"] }
 tempfile = { version = "*" }
+scraper = { version = "0.25" }
+assert_cmd = { version = "2" }
+predicates = { version = "3" }
 
 [profile.bench]
 lto = "thin"

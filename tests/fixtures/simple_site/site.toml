@@ -1,0 +1,27 @@
+[site]
+title = "Test Blog"
+tagline = "A test site for integration testing"
+domain = "test.example.com"
+author = "Test Author"
+output_dir = "output"
+content_dir = "content"
+template_dir = "templates"
+static_dir = "static"
+site_index_template = "site_index.html"
+
+[site.content_types.blog]
+index_template = "blog_index.html"
+content_template = "blog.html"
+output_naming = "date"
+
+[site.content_types.pages]
+index_template = "page_index.html"
+content_template = "page.html"
+
+[site.root_static]
+"favicon.ico" = "favicon.ico"
+"robots.txt" = "robots.txt"
+
+[dynamic]
+github_url = "https://github.com/testuser"
+twitter_handle = "@testuser"

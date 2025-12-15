@@ -9,7 +9,7 @@ use crate::config::Config;
 use crate::content::{Content, convert_content, load_content};
 use crate::error::RunError;
 use crate::output::{copy_static_files, write_output_file};
-use crate::template::{render_html, render_index_from_loaded};
+use crate::template::{init_environment, render_html, render_index_from_loaded};
 use crate::utils::{
     add_date_prefix, find_markdown_files, get_content_type, get_content_type_template,
     get_output_path,
@@ -52,6 +52,9 @@ pub(crate) fn run(argz: Argz) -> Result<(), RunError> {
     info!("Config file: {}", argz.config_file);
 
     let config = Config::load_from_file(&argz.config_file).expect("Failed to load configuration");
+
+    // Initialize template environment once
+    let env = init_environment(&config.site.template_dir);
 
     // 0. Copy static files first
     //
@@ -111,6 +114,7 @@ pub(crate) fn run(argz: Argz) -> Result<(), RunError> {
 
         let content_template = get_content_type_template(&config, &loaded.content_type);
         let rendered = render_html(
+            env,
             &loaded.html,
             &loaded.content.meta,
             &config,
@@ -132,7 +136,7 @@ pub(crate) fn run(argz: Argz) -> Result<(), RunError> {
             .filter(|lc| &lc.content_type == content_type)
             .collect();
 
-        let index_rendered = render_index_from_loaded(&config, &v.index_template, filtered)?;
+        let index_rendered = render_index_from_loaded(env, &config, &v.index_template, filtered)?;
 
         let output_path = PathBuf::from(&config.site.output_dir)
             .join(content_type)
@@ -144,6 +148,7 @@ pub(crate) fn run(argz: Argz) -> Result<(), RunError> {
     // 5. Render site index
     //
     let site_index_rendered = render_index_from_loaded(
+        env,
         &config,
         &config.site.site_index_template,
         loaded_contents.iter().collect(),

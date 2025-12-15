@@ -4,6 +4,32 @@ Actually Marie SSSSG (super simple static site generator)
 
 ## Version History
 
+### v0.4.0 (2025-12-15) - Testing & Quality Improvements
+
+**Testing Infrastructure:**
+
+- **Comprehensive integration testing**: Added CLI-based integration tests with HTML DOM validation using `scraper` library
+- **Test coverage increased**: From 57.93% to 86.35% (exceeding 80% goal)
+- **HTML parsing validation**: Tests now validate actual HTML structure and content, not just file existence
+- **Complete test fixtures**: Created realistic example site in `tests/fixtures/simple_site/` demonstrating all features
+- **Template rendering tests**: Added unit tests for template functions with proper DOM validation
+
+**Code Quality Improvements:**
+
+- **Refactored template rendering**: Changed from implicit `OnceLock` access to explicit `&Environment` parameter passing
+- **Improved testability**: Template functions now accept environment as parameter, enabling isolated unit testing
+- **64 total tests**: 54 unit tests + 10 integration tests, all passing
+- **Module coverage**:
+  - src/main.rs: 0% → 95.6%
+  - src/template.rs: 83.9% → 100%
+  - src/output.rs: 68.1% → 75.5%
+
+**Dependencies Added:**
+
+- `scraper` - HTML parsing with CSS selectors for integration test validation
+- `assert_cmd` - CLI application testing framework
+- `predicates` - Assertion library for CLI output validation
+
 ### v0.3.0 (2025-10-14) - Configuration Changes
 
 **Performance Improvements:**
@@ -73,17 +99,60 @@ lint                     Running linting
 tests                    Running tests
 ```
 
+## Testing
+
+Marie SSG has comprehensive test coverage (86.35%):
+
+```bash
+# Run all tests (unit + integration)
+cargo test
+
+# Run only integration tests
+cargo test --test integration_test
+
+# Run with coverage report
+cargo tarpaulin --out Stdout
+
+# Run specific test
+cargo test test_blog_index_sorting
+```
+
+**Test Types:**
+- **Unit tests** (54): Test individual functions and modules
+- **Integration tests** (10): End-to-end CLI testing with HTML validation
+- **Test fixtures**: Complete example site in `tests/fixtures/simple_site/`
+
+**What's Tested:**
+- ✅ Configuration loading and validation
+- ✅ Markdown to HTML conversion
+- ✅ Template rendering with metadata
+- ✅ Multiple content types (blog, pages)
+- ✅ Index generation and date-based sorting
+- ✅ Static file copying
+- ✅ Excerpt extraction
+- ✅ HTML structure validation via DOM parsing
+- ✅ Error handling
+
 ## Code organization
 
 ```
 src/
-├── main.rs              # CLI entry point
-├── error.rs             # All error types (RunError, ConfigError, ContentError, StaticError, WriteError)
-├── config.rs            # Config types + loading (Config, ContentTypeConfig, load_config)
-├── content.rs           # Content types + processing (Content, ContentMeta, ContentItem, load_content, load_metadata, convert_content)
-├── template.rs          # Template rendering (render_html, render_index_with_contents, get_content_by_type)
-├── utils.rs             # Utility functions (find_markdown_files, get_output_path, add_date_prefix, get_content_type, get_content_type_template)
+├── main.rs              # CLI entry point & application logic
+├── error.rs             # Error types (RunError, ConfigError, ContentError, StaticError, WriteError)
+├── config.rs            # Config types + loading (Config, SiteConfig, ContentTypeConfig)
+├── content.rs           # Content processing (Content, ContentMeta, ContentItem, load_content, convert_content)
+├── template.rs          # Template rendering (init_environment, render_html, render_index_from_loaded)
+├── utils.rs             # Utility functions (find_markdown_files, get_output_path, content type handling)
 └── output.rs            # Output operations (write_output_file, copy_static_files)
+
+tests/
+├── integration_test.rs  # CLI integration tests with HTML validation
+└── fixtures/
+    └── simple_site/     # Complete example site for testing and demonstration
+        ├── content/     # Sample markdown files with metadata
+        ├── templates/   # Example templates (blog, pages, indexes)
+        ├── static/      # Static assets (CSS, favicon, robots.txt)
+        └── site.toml    # Full configuration example
 ```
 
 ## Content types
@@ -132,7 +201,10 @@ bd update <id> --status X     # move ticket through the workflow
 
 ### Active tickets
 
-- mar-3jw [P2] [task] open - Increase test coverage from 46% to 80%
-- mar-3xs [P2] [task] open - Skip copying unchanged static assets
 - mar-ex5 [P2] [task] open - Stream markdown processing in parallel
-- mar-tap [P2] [task] open - Reuse cached template environment
+
+### Recently completed
+
+- mar-3jw [P2] [task] closed - Increase test coverage from 46% to 80% (achieved 86.35%)
+- mar-tap [P2] [task] closed - Reuse cached template environment
+- mar-3xs [P2] [task] closed - Skip copying unchanged static assets

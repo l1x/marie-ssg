@@ -1,0 +1,15 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Pages - {{ config.site.title }}</title>
+</head>
+<body>
+    <h1>All Pages</h1>
+    <ul class="page-list">
+        {% for item in contents %}
+        <li><a href="/{{ item.filename }}">{{ item.meta.title }}</a></li>
+        {% endfor %}
+    </ul>
+</body>
+</html>

@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Blog - {{ config.site.title }}</title>
+    <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+    <header>
+        <h1 class="site-title">{{ config.site.title }}</h1>
+        <p class="tagline">{{ config.site.tagline }}</p>
+    </header>
+    
+    <main>
+        <h2 class="index-heading">Blog Posts</h2>
+        <div class="post-list">
+            {% for item in contents %}
+            <article class="post-summary">
+                <h3><a href="/{{ item.filename }}">{{ item.meta.title }}</a></h3>
+                <p class="date">{{ item.formatted_date }}</p>
+                <div class="excerpt">{{ item.excerpt | safe }}</div>
+                <div class="tags">
+                    {% for tag in item.meta.tags %}
+                    <span class="tag">{{ tag }}</span>
+                    {% endfor %}
+                </div>
+            </article>
+            {% endfor %}
+        </div>
+    </main>
+    
+    <footer>
+        <p>{{ contents | length }} blog posts</p>
+    </footer>
+</body>
+</html>
