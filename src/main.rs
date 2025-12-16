@@ -80,7 +80,7 @@ pub(crate) fn run(argz: Argz) -> Result<(), RunError> {
 
             let mut output_path =
                 get_output_path(file, &config.site.content_dir, &config.site.output_dir);
-            if let Some(ct_config) = config.content_types.get(&content_type)
+            if let Some(ct_config) = config.content.get(&content_type)
                 && ct_config.output_naming.as_deref() == Some("date")
             {
                 output_path = add_date_prefix(output_path, &content.meta.date);
@@ -125,7 +125,7 @@ pub(crate) fn run(argz: Argz) -> Result<(), RunError> {
 
     // 4. Render content type indexes
     //
-    for (content_type, v) in config.content_types.iter() {
+    for (content_type, v) in config.content.iter() {
         info!(
             "Content type: {} -> Index Template: {:?}",
             content_type, v.index_template

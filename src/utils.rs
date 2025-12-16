@@ -229,7 +229,7 @@ pub(crate) fn get_output_path(file: &Path, content_dir: &str, output_dir: &str) 
 /// - This function only returns the template path; it does not validate if the template file exists
 pub(crate) fn get_content_type_template(config: &Config, content_type: &str) -> String {
     config
-        .content_types
+        .content
         .get(content_type)
         .map(|ct| ct.content_template.as_str())
         .unwrap_or("default.html") // fallback template
@@ -279,7 +279,7 @@ mod tests {
                 site_index_template: "site_index.html".to_string(),
                 root_static: HashMap::new(),
             },
-            content_types,
+            content: content_types,
             dynamic: HashMap::new(),
         }
     }

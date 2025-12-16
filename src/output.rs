@@ -225,7 +225,7 @@ mod tests {
                 site_index_template: "site_index.html".to_string(),
                 root_static,
             },
-            content_types: HashMap::new(),
+            content: HashMap::new(),
             dynamic: HashMap::new(),
         }
     }

@@ -110,7 +110,7 @@ mod tests {
                 site_index_template: "index.html".to_string(),
                 root_static: HashMap::new(),
             },
-            content_types: HashMap::new(),
+            content: HashMap::new(),
             dynamic: HashMap::new(),
         }
     }

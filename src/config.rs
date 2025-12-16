@@ -11,7 +11,7 @@ pub(crate) struct Config {
 
     /// Content type configurations (e.g., posts, pages, projects)
     #[serde(default)]
-    pub content_types: HashMap<String, ContentTypeConfig>,
+    pub content: HashMap<String, ContentTypeConfig>,
 
     /// Custom variables accessible in templates
     #[serde(default)]
@@ -102,7 +102,7 @@ site_index_template = "index.html"
         assert_eq!(config.site.author, "Test Author");
         assert_eq!(config.site.output_dir, "output");
         assert_eq!(config.site.content_dir, "content");
-        assert!(config.content_types.is_empty());
+        assert!(config.content.is_empty());
         assert!(config.site.root_static.is_empty());
         assert!(config.dynamic.is_empty());
     }
@@ -121,26 +121,26 @@ template_dir = "templates"
 static_dir = "static"
 site_index_template = "index.html"
 
-[content_types.posts]
+[content.posts]
 index_template = "posts_index.html"
 content_template = "post.html"
 output_naming = "date"
 
-[content_types.pages]
+[content.pages]
 index_template = "pages_index.html"
 content_template = "page.html"
 "#;
 
         let config = Config::from_str(toml).unwrap();
 
-        assert_eq!(config.content_types.len(), 2);
+        assert_eq!(config.content.len(), 2);
 
-        let posts = config.content_types.get("posts").unwrap();
+        let posts = config.content.get("posts").unwrap();
         assert_eq!(posts.index_template, "posts_index.html");
         assert_eq!(posts.content_template, "post.html");
         assert_eq!(posts.output_naming, Some("date".to_string()));
 
-        let pages = config.content_types.get("pages").unwrap();
+        let pages = config.content.get("pages").unwrap();
         assert_eq!(pages.index_template, "pages_index.html");
         assert_eq!(pages.content_template, "page.html");
         assert_eq!(pages.output_naming, None);
