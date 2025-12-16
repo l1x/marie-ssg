@@ -108,9 +108,9 @@ mod tests {
                 template_dir: template_dir.to_string(),
                 static_dir: "static".to_string(),
                 site_index_template: "index.html".to_string(),
-                content_types: HashMap::new(),
                 root_static: HashMap::new(),
             },
+            content_types: HashMap::new(),
             dynamic: HashMap::new(),
         }
     }

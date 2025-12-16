@@ -9,12 +9,12 @@ template_dir = "templates"
 static_dir = "static"
 site_index_template = "site_index.html"
 
-[site.content_types.blog]
+[content_types.blog]
 index_template = "blog_index.html"
 content_template = "blog.html"
 output_naming = "date"
 
-[site.content_types.pages]
+[content_types.pages]
 index_template = "page_index.html"
 content_template = "page.html"
 

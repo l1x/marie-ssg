@@ -9,6 +9,10 @@ pub(crate) struct Config {
     /// Site
     pub site: SiteConfig,
 
+    /// Content type configurations (e.g., posts, pages, projects)
+    #[serde(default)]
+    pub content_types: HashMap<String, ContentTypeConfig>,
+
     /// Custom variables accessible in templates
     #[serde(default)]
     pub dynamic: HashMap<String, String>,
@@ -46,9 +50,6 @@ pub(crate) struct SiteConfig {
     pub static_dir: String,
     /// Template for the site-wide index page
     pub site_index_template: String,
-    /// After content dir is scanned this is filled up with the different content types found
-    #[serde(default)]
-    pub content_types: HashMap<String, ContentTypeConfig>,
     /// Static files that should be copied to the output root (e.g., favicon.ico, robots.txt)
     #[serde(default)]
     pub root_static: HashMap<String, String>,
@@ -101,7 +102,7 @@ site_index_template = "index.html"
         assert_eq!(config.site.author, "Test Author");
         assert_eq!(config.site.output_dir, "output");
         assert_eq!(config.site.content_dir, "content");
-        assert!(config.site.content_types.is_empty());
+        assert!(config.content_types.is_empty());
         assert!(config.site.root_static.is_empty());
         assert!(config.dynamic.is_empty());
     }
@@ -120,26 +121,26 @@ template_dir = "templates"
 static_dir = "static"
 site_index_template = "index.html"
 
-[site.content_types.posts]
+[content_types.posts]
 index_template = "posts_index.html"
 content_template = "post.html"
 output_naming = "date"
 
-[site.content_types.pages]
+[content_types.pages]
 index_template = "pages_index.html"
 content_template = "page.html"
 "#;
 
         let config = Config::from_str(toml).unwrap();
 
-        assert_eq!(config.site.content_types.len(), 2);
+        assert_eq!(config.content_types.len(), 2);
 
-        let posts = config.site.content_types.get("posts").unwrap();
+        let posts = config.content_types.get("posts").unwrap();
         assert_eq!(posts.index_template, "posts_index.html");
         assert_eq!(posts.content_template, "post.html");
         assert_eq!(posts.output_naming, Some("date".to_string()));
 
-        let pages = config.site.content_types.get("pages").unwrap();
+        let pages = config.content_types.get("pages").unwrap();
         assert_eq!(pages.index_template, "pages_index.html");
         assert_eq!(pages.content_template, "page.html");
         assert_eq!(pages.output_naming, None);

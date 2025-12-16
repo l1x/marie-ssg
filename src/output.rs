@@ -223,9 +223,9 @@ mod tests {
                 template_dir: "templates".to_string(),
                 static_dir: "static".to_string(),
                 site_index_template: "site_index.html".to_string(),
-                content_types: HashMap::new(),
                 root_static,
             },
+            content_types: HashMap::new(),
             dynamic: HashMap::new(),
         }
     }
