@@ -16,9 +16,14 @@ marie-ssg build
 marie-ssg build -c mysite.toml
 marie-ssg build --config-file mysite.toml
 
+# Watch for changes and rebuild automatically (macOS only)
+marie-ssg watch
+marie-ssg watch -c mysite.toml
+
 # Show help
 marie-ssg --help
 marie-ssg build --help
+marie-ssg watch --help
 ```
 
 ## Version History
@@ -31,6 +36,11 @@ marie-ssg build --help
 - **Introduced subcommand structure**: Build functionality moved to `build` subcommand
 - **Config option on build**: `-c` / `--config-file` option now on the `build` subcommand
 - **Cleaner output**: Removed unnecessary "Starting up..." and "ok" log messages
+- **Watch mode (macOS)**: New `watch` subcommand monitors content, templates, and static directories for changes and triggers automatic rebuilds with 500ms debouncing
+
+**Dependencies Added:**
+
+- `fsevent` - macOS file system events for watch mode (conditional, macOS only)
 
 ### v0.4.0 (2025-12-15) - Testing & Quality Improvements
 
