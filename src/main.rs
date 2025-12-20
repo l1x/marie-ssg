@@ -213,6 +213,7 @@ fn watch(config_file: &str) -> Result<(), RunError> {
     let config = Config::load_from_file(config_file).expect("Failed to load configuration");
 
     let paths_to_watch: Vec<String> = vec![
+        config_file.to_string(),
         config.site.content_dir.clone(),
         config.site.template_dir.clone(),
         config.site.static_dir.clone(),
