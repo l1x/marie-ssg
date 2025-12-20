@@ -9,7 +9,7 @@ use crate::config::Config;
 use crate::content::{Content, convert_content, load_content};
 use crate::error::RunError;
 use crate::output::{copy_static_files, write_output_file};
-use crate::template::{init_environment, render_html, render_index_from_loaded};
+use crate::template::{create_environment, init_environment, render_html, render_index_from_loaded};
 use crate::utils::{
     add_date_prefix, find_markdown_files, get_content_type, get_content_type_template,
     get_output_path,
@@ -74,20 +74,30 @@ pub(crate) struct LoadedContent {
     pub(crate) output_path: PathBuf,
 }
 
-/// The main entry point for the application logic.
+/// The main entry point for the application logic (uses cached templates).
 #[instrument(skip_all)]
 pub(crate) fn build(config_file: &str) -> Result<(), RunError> {
-    // loading config
-    info!("Config file: {}", config_file);
-
     let config = Config::load_from_file(config_file).expect("Failed to load configuration");
-
-    // Initialize template environment once
     let env = init_environment(&config.site.template_dir);
+    run_build(config_file, &config, env)
+}
+
+/// Build with a fresh template environment (for watch mode).
+#[instrument(skip_all)]
+pub(crate) fn build_fresh(config_file: &str) -> Result<(), RunError> {
+    let config = Config::load_from_file(config_file).expect("Failed to load configuration");
+    let env = create_environment(&config.site.template_dir);
+    run_build(config_file, &config, &env)
+}
+
+/// Core build logic that accepts a template environment.
+#[instrument(skip_all)]
+fn run_build(config_file: &str, config: &Config, env: &minijinja::Environment) -> Result<(), RunError> {
+    info!("Config file: {}", config_file);
 
     // 0. Copy static files first
     //
-    copy_static_files(&config)?;
+    copy_static_files(config)?;
 
     // 1. Find all markdown files in `config.content_dir`.
     //
@@ -141,12 +151,12 @@ pub(crate) fn build(config_file: &str) -> Result<(), RunError> {
             loaded.output_path.display()
         );
 
-        let content_template = get_content_type_template(&config, &loaded.content_type);
+        let content_template = get_content_type_template(config, &loaded.content_type);
         let rendered = render_html(
             env,
             &loaded.html,
             &loaded.content.meta,
-            &config,
+            config,
             &content_template,
         )?;
         write_output_file(&loaded.output_path, &rendered)?;
@@ -165,7 +175,7 @@ pub(crate) fn build(config_file: &str) -> Result<(), RunError> {
             .filter(|lc| &lc.content_type == content_type)
             .collect();
 
-        let index_rendered = render_index_from_loaded(env, &config, &v.index_template, filtered)?;
+        let index_rendered = render_index_from_loaded(env, config, &v.index_template, filtered)?;
 
         let output_path = PathBuf::from(&config.site.output_dir)
             .join(content_type)
@@ -178,7 +188,7 @@ pub(crate) fn build(config_file: &str) -> Result<(), RunError> {
     //
     let site_index_rendered = render_index_from_loaded(
         env,
-        &config,
+        config,
         &config.site.site_index_template,
         loaded_contents.iter().collect(),
     )?;
@@ -211,8 +221,8 @@ fn watch(config_file: &str) -> Result<(), RunError> {
     info!("Watching directories: {:?}", paths_to_watch);
     info!("Press Ctrl+C to stop");
 
-    // Initial build
-    if let Err(e) = build(config_file) {
+    // Initial build (use fresh environment from the start)
+    if let Err(e) = build_fresh(config_file) {
         error!("Initial build failed: {:?}", e);
     }
 
@@ -239,7 +249,7 @@ fn watch(config_file: &str) -> Result<(), RunError> {
                 info!("Changes detected: {:?}", events);
                 last_build = Instant::now();
 
-                if let Err(e) = build(config_file) {
+                if let Err(e) = build_fresh(config_file) {
                     error!("Build failed: {:?}", e);
                 }
             }

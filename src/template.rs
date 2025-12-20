@@ -11,7 +11,7 @@ use crate::{
 
 static ENV: OnceLock<Environment<'static>> = OnceLock::new();
 
-/// Initialize and return the global template environment
+/// Initialize and return the global template environment (cached, for single builds)
 pub(crate) fn init_environment(template_dir: &str) -> &'static Environment<'static> {
     ENV.get_or_init(|| {
         let mut env = Environment::new();
@@ -19,6 +19,14 @@ pub(crate) fn init_environment(template_dir: &str) -> &'static Environment<'stat
         add_to_environment(&mut env);
         env
     })
+}
+
+/// Create a fresh template environment (uncached, for watch mode)
+pub(crate) fn create_environment(template_dir: &str) -> Environment<'static> {
+    let mut env = Environment::new();
+    env.set_loader(path_loader(template_dir));
+    add_to_environment(&mut env);
+    env
 }
 
 pub(crate) fn render_index_from_loaded(
