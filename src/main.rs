@@ -43,12 +43,22 @@ struct Argz {
 #[argh(subcommand)]
 enum SubCommand {
     Build(BuildArgs),
+    Watch(WatchArgs),
 }
 
 #[derive(FromArgs, Debug)]
 #[argh(subcommand, name = "build")]
 /// Build the static site
 struct BuildArgs {
+    /// path to the config file
+    #[argh(option, short = 'c', default = "default_config_file()")]
+    config_file: String,
+}
+
+#[derive(FromArgs, Debug)]
+#[argh(subcommand, name = "watch")]
+/// Watch for changes and rebuild automatically
+struct WatchArgs {
     /// path to the config file
     #[argh(option, short = 'c', default = "default_config_file()")]
     config_file: String,
@@ -66,12 +76,11 @@ pub(crate) struct LoadedContent {
 
 /// The main entry point for the application logic.
 #[instrument(skip_all)]
-pub(crate) fn run(args: BuildArgs) -> Result<(), RunError> {
+pub(crate) fn build(config_file: &str) -> Result<(), RunError> {
     // loading config
-    debug!("Args: {:?}", args);
-    info!("Config file: {}", args.config_file);
+    info!("Config file: {}", config_file);
 
-    let config = Config::load_from_file(&args.config_file).expect("Failed to load configuration");
+    let config = Config::load_from_file(config_file).expect("Failed to load configuration");
 
     // Initialize template environment once
     let env = init_environment(&config.site.template_dir);
@@ -183,6 +192,73 @@ pub(crate) fn run(args: BuildArgs) -> Result<(), RunError> {
     Ok(())
 }
 
+/// Watch for file changes and rebuild automatically (macOS only)
+#[cfg(target_os = "macos")]
+fn watch(config_file: &str) -> Result<(), RunError> {
+    use std::sync::mpsc::channel;
+    use std::thread;
+    use std::time::{Duration, Instant};
+
+    // Load config to get directories to watch
+    let config = Config::load_from_file(config_file).expect("Failed to load configuration");
+
+    let paths_to_watch: Vec<String> = vec![
+        config.site.content_dir.clone(),
+        config.site.template_dir.clone(),
+        config.site.static_dir.clone(),
+    ];
+
+    info!("Watching directories: {:?}", paths_to_watch);
+    info!("Press Ctrl+C to stop");
+
+    // Initial build
+    if let Err(e) = build(config_file) {
+        error!("Initial build failed: {:?}", e);
+    }
+
+    let (sender, receiver) = channel();
+
+    let _watcher_thread = thread::spawn(move || {
+        let fsevent = fsevent::FsEvent::new(paths_to_watch);
+        fsevent.observe(sender);
+    });
+
+    // Debounce: track last build time
+    let mut last_build = Instant::now();
+    let debounce_duration = Duration::from_millis(500);
+
+    loop {
+        match receiver.recv() {
+            Ok(events) => {
+                // Check debounce
+                if last_build.elapsed() < debounce_duration {
+                    debug!("Debouncing, skipping rebuild");
+                    continue;
+                }
+
+                info!("Changes detected: {:?}", events);
+                last_build = Instant::now();
+
+                if let Err(e) = build(config_file) {
+                    error!("Build failed: {:?}", e);
+                }
+            }
+            Err(e) => {
+                error!("Watch error: {:?}", e);
+                break;
+            }
+        }
+    }
+
+    Ok(())
+}
+
+#[cfg(not(target_os = "macos"))]
+fn watch(_config_file: &str) -> Result<(), RunError> {
+    eprintln!("Watch mode is only supported on macOS");
+    std::process::exit(1);
+}
+
 fn main() {
     // Initialize tracing subscriber for logging
     tracing_subscriber::fmt::init();
@@ -196,8 +272,13 @@ fn main() {
     }
 
     match argz.command {
-        Some(SubCommand::Build(build_args)) => {
-            if let Err(e) = run(build_args) {
+        Some(SubCommand::Build(args)) => {
+            if let Err(e) = build(&args.config_file) {
+                error!("{:?}", e);
+            }
+        }
+        Some(SubCommand::Watch(args)) => {
+            if let Err(e) = watch(&args.config_file) {
                 error!("{:?}", e);
             }
         }
