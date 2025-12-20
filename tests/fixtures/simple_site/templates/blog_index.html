@@ -18,7 +18,7 @@
             {% for item in contents %}
             <article class="post-summary">
                 <h3><a href="/{{ item.filename }}">{{ item.meta.title }}</a></h3>
-                <p class="date">{{ item.formatted_date }}</p>
+                <span class="date">{{ item.meta.date | datetimeformat(format="long") }}</span>
                 <div class="excerpt">{{ item.excerpt | safe }}</div>
                 <div class="tags">
                     {% for tag in item.meta.tags %}

@@ -1,11 +1,12 @@
 // src/template.rs
 
-use minijinja::{Environment, context, path_loader};
+use minijinja::{context, path_loader, Environment};
+use minijinja_contrib::add_to_environment;
 use std::sync::OnceLock;
 
 use crate::{
     config::Config,
-    content::{ContentItem, ContentMeta, get_excerpt_html},
+    content::{get_excerpt_html, ContentItem, ContentMeta},
 };
 
 static ENV: OnceLock<Environment<'static>> = OnceLock::new();
@@ -15,6 +16,7 @@ pub(crate) fn init_environment(template_dir: &str) -> &'static Environment<'stat
     ENV.get_or_init(|| {
         let mut env = Environment::new();
         env.set_loader(path_loader(template_dir));
+        add_to_environment(&mut env);
         env
     })
 }
@@ -37,13 +39,12 @@ pub(crate) fn render_index_from_loaded(
                 .to_string_lossy()
                 .to_string();
 
-            let formatted_date = lc.content.meta.date.format("%B %d, %Y").to_string();
             let excerpt = get_excerpt_html(&lc.content.data, "## Summary");
 
             ContentItem {
                 html: lc.html.clone(),
                 meta: lc.content.meta.clone(),
-                formatted_date,
+                formatted_date: lc.content.meta.date.format("%B %d, %Y").to_string(),
                 filename,
                 content_type: lc.content_type.clone(),
                 excerpt,
@@ -141,6 +142,7 @@ mod tests {
         // Create environment and config
         let mut env = Environment::new();
         env.set_loader(path_loader(temp_dir.path()));
+        add_to_environment(&mut env);
         let config = create_test_config(
             temp_dir.path().to_str().unwrap(),
             "output"
@@ -174,6 +176,7 @@ mod tests {
 
         let mut env = Environment::new();
         env.set_loader(path_loader(temp_dir.path()));
+        add_to_environment(&mut env);
         let config = create_test_config(
             temp_dir.path().to_str().unwrap(),
             "output"
@@ -187,6 +190,32 @@ mod tests {
         assert!(rendered.contains("Test Article"));
         assert!(rendered.contains("Test Author"));
         assert!(rendered.contains("rust, testing"));
+    }
+
+    #[test]
+    fn test_datetimeformat_filter_available() {
+        let temp_dir = TempDir::new().unwrap();
+        let template_path = temp_dir.path().join("date.html");
+
+        std::fs::write(
+            &template_path,
+            "<p>{{ meta.date | datetimeformat }}</p>"
+        ).unwrap();
+
+        let mut env = Environment::new();
+        env.set_loader(path_loader(temp_dir.path()));
+        add_to_environment(&mut env);
+
+        let config = create_test_config(
+            temp_dir.path().to_str().unwrap(),
+            "output"
+        );
+
+        let meta = create_test_meta();
+        let result = render_html(&env, "<p>Body</p>", &meta, &config, "date.html");
+
+        let rendered = result.expect("datetimeformat filter should render");
+        assert!(rendered.contains("Jan 15 2024"));
     }
 
     #[test]

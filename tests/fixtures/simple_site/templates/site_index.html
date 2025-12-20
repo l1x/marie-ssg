@@ -24,7 +24,7 @@
             {% for item in contents %}
             <article class="content-item">
                 <h3><a href="/{{ item.filename }}">{{ item.meta.title }}</a></h3>
-                <p class="meta">{{ item.content_type }} - {{ item.formatted_date }}</p>
+                <p class="meta">{{ item.content_type }} - {{ item.meta.date | datetimeformat(format="long") }}</p>
             </article>
             {% endfor %}
         </section>

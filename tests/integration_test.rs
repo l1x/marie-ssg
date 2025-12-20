@@ -15,6 +15,7 @@ use std::fs;
 use std::path::{Path, PathBuf};
 use tempfile::TempDir;
 
+
 /// Helper to create a temporary working directory with test fixtures
 fn setup_test_site() -> TempDir {
     let temp_dir = TempDir::new().unwrap();
@@ -248,14 +249,9 @@ fn test_blog_post_rendering() {
     let author = select_text(&post_html, ".author");
     assert!(author.contains("Test Author"));
 
-    // Check date exists (raw date from metadata)
+    // Check formatted date via datetimeformat filter
     let date = select_text(&post_html, ".date");
-    eprintln!("Date text: {}", date);
-    assert!(!date.is_empty(), "Date should be present");
-    assert!(
-        date.contains("2024-01-15") || date.contains("2024"),
-        "Date should contain year"
-    );
+    assert_eq!(date, "January 15 2024 10:00:00");
 
     // Check tags
     let tags = count_elements(&post_html, ".tags .tag");

@@ -17,7 +17,7 @@
             <h1 class="post-title">{{ meta.title }}</h1>
             <div class="post-meta">
                 <span class="author">By {{ meta.author }}</span>
-                <span class="date">{{ meta.date }}</span>
+                <span class="date">{{ meta.date | datetimeformat(format="long") }}</span>
             </div>
             <div class="tags">
                 {% for tag in meta.tags %}
