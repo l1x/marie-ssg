@@ -2,7 +2,35 @@
 
 Actually Marie SSSSG (super simple static site generator)
 
+## Usage
+
+```bash
+# Show version
+marie-ssg -V
+marie-ssg --version
+
+# Build site with default config (site.toml)
+marie-ssg build
+
+# Build site with custom config file
+marie-ssg build -c mysite.toml
+marie-ssg build --config-file mysite.toml
+
+# Show help
+marie-ssg --help
+marie-ssg build --help
+```
+
 ## Version History
+
+### v0.5.0 (2025-12-20) - CLI Improvements
+
+**CLI Changes:**
+
+- **Added version flag**: `-V` / `--version` prints the version from Cargo.toml
+- **Introduced subcommand structure**: Build functionality moved to `build` subcommand
+- **Config option on build**: `-c` / `--config-file` option now on the `build` subcommand
+- **Cleaner output**: Removed unnecessary "Starting up..." and "ok" log messages
 
 ### v0.4.0 (2025-12-15) - Testing & Quality Improvements
 

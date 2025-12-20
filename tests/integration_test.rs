@@ -54,9 +54,9 @@ fn copy_dir_recursive(src: &Path, dst: &Path) -> std::io::Result<()> {
 fn run_ssg(site_dir: &Path) -> assert_cmd::assert::Assert {
     let config_path = site_dir.join("site.toml");
 
-    cargo_bin_cmd!("marie-ssg") // ✅ Returns Command directly
-        // .unwrap()  <-- DELETE THIS LINE
+    cargo_bin_cmd!("marie-ssg")
         .current_dir(site_dir)
+        .arg("build")
         .arg("-c")
         .arg(config_path.file_name().unwrap())
         .assert()
@@ -376,6 +376,7 @@ fn test_invalid_config_fails_gracefully() {
     fs::write(&invalid_config, "this is not valid toml [[[").unwrap();
 
     cargo_bin_cmd!("marie-ssg")
+        .arg("build")
         .arg("-c")
         .arg(&invalid_config)
         .assert()

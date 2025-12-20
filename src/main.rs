@@ -22,13 +22,33 @@ mod output;
 mod template;
 mod utils;
 
+const VERSION: &str = env!("CARGO_PKG_VERSION");
+
 fn default_config_file() -> String {
     "site.toml".to_string()
 }
 
 #[derive(FromArgs, Debug)]
-/// A command line interface
+/// Marie SSG - Super Simple Static Site Generator
 struct Argz {
+    /// print version information
+    #[argh(switch, short = 'V')]
+    version: bool,
+
+    #[argh(subcommand)]
+    command: Option<SubCommand>,
+}
+
+#[derive(FromArgs, Debug)]
+#[argh(subcommand)]
+enum SubCommand {
+    Build(BuildArgs),
+}
+
+#[derive(FromArgs, Debug)]
+#[argh(subcommand, name = "build")]
+/// Build the static site
+struct BuildArgs {
     /// path to the config file
     #[argh(option, short = 'c', default = "default_config_file()")]
     config_file: String,
@@ -46,12 +66,12 @@ pub(crate) struct LoadedContent {
 
 /// The main entry point for the application logic.
 #[instrument(skip_all)]
-pub(crate) fn run(argz: Argz) -> Result<(), RunError> {
+pub(crate) fn run(args: BuildArgs) -> Result<(), RunError> {
     // loading config
-    debug!("Args: {:?}", argz);
-    info!("Config file: {}", argz.config_file);
+    debug!("Args: {:?}", args);
+    info!("Config file: {}", args.config_file);
 
-    let config = Config::load_from_file(&argz.config_file).expect("Failed to load configuration");
+    let config = Config::load_from_file(&args.config_file).expect("Failed to load configuration");
 
     // Initialize template environment once
     let env = init_environment(&config.site.template_dir);
@@ -167,13 +187,23 @@ fn main() {
     // Initialize tracing subscriber for logging
     tracing_subscriber::fmt::init();
 
-    info!("Starting up...");
-
     // Parse CLI arguments
     let argz: Argz = argh::from_env();
 
-    match run(argz) {
-        Ok(_ok) => info!("ok"),
-        Err(e) => error!("{:?}", e),
+    if argz.version {
+        println!("marie-ssg {}", VERSION);
+        return;
+    }
+
+    match argz.command {
+        Some(SubCommand::Build(build_args)) => {
+            if let Err(e) = run(build_args) {
+                error!("{:?}", e);
+            }
+        }
+        None => {
+            println!("marie-ssg {}", VERSION);
+            println!("Use --help for usage information");
+        }
     }
 }
