@@ -2,7 +2,7 @@
 
 This is a test site for Marie SSG.
 
-## Summary
+## Context
 
 A simple about page to demonstrate the pages content type.
 

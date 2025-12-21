@@ -47,7 +47,7 @@ pub(crate) fn render_index_from_loaded(
                 .to_string_lossy()
                 .to_string();
 
-            let excerpt = get_excerpt_html(&lc.content.data, "## Summary");
+            let excerpt = get_excerpt_html(&lc.content.data, "## Context");
 
             ContentItem {
                 html: lc.html.clone(),
@@ -411,7 +411,7 @@ mod tests {
             path: PathBuf::from("test.md"),
             content: crate::content::Content {
                 meta: create_test_meta(),
-                data: "# Title\n\n## Summary\n\nThis is the excerpt.".to_string(),
+                data: "# Title\n\n## Context\n\nThis is the excerpt.".to_string(),
             },
             html: "<h1>Title</h1>".to_string(),
             content_type: "blog".to_string(),
