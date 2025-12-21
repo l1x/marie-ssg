@@ -90,6 +90,16 @@ pub(crate) fn build_fresh(config_file: &str) -> Result<(), RunError> {
     run_build(config_file, &config, &env)
 }
 
+/// Get the list of file paths/directories to watch for changes.
+pub(crate) fn get_paths_to_watch(config_file: &str, config: &Config) -> Vec<String> {
+    vec![
+        config_file.to_string(),
+        config.site.content_dir.clone(),
+        config.site.template_dir.clone(),
+        config.site.static_dir.clone(),
+    ]
+}
+
 /// Core build logic that accepts a template environment.
 #[instrument(skip_all)]
 fn run_build(config_file: &str, config: &Config, env: &minijinja::Environment) -> Result<(), RunError> {
@@ -212,12 +222,7 @@ fn watch(config_file: &str) -> Result<(), RunError> {
     // Load config to get directories to watch
     let config = Config::load_from_file(config_file).expect("Failed to load configuration");
 
-    let paths_to_watch: Vec<String> = vec![
-        config_file.to_string(),
-        config.site.content_dir.clone(),
-        config.site.template_dir.clone(),
-        config.site.static_dir.clone(),
-    ];
+    let paths_to_watch = get_paths_to_watch(config_file, &config);
 
     info!("Watching directories: {:?}", paths_to_watch);
     info!("Press Ctrl+C to stop");
@@ -297,5 +302,37 @@ fn main() {
             println!("marie-ssg {}", VERSION);
             println!("Use --help for usage information");
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_get_paths_to_watch() {
+        let toml = r#"
+[site]
+title = "Test Site"
+tagline = "A test tagline"
+domain = "example.com"
+author = "Test Author"
+output_dir = "output"
+content_dir = "content"
+template_dir = "templates"
+static_dir = "static"
+site_index_template = "index.html"
+"#;
+        let config = crate::config::Config::from_str(toml).unwrap();
+        let config_file = "site.toml";
+        
+        let paths = get_paths_to_watch(config_file, &config);
+        
+        // Should contain 4 paths: config file + 3 dirs
+        assert_eq!(paths.len(), 4);
+        assert!(paths.contains(&"site.toml".to_string()));
+        assert!(paths.contains(&"content".to_string()));
+        assert!(paths.contains(&"templates".to_string()));
+        assert!(paths.contains(&"static".to_string()));
     }
 }
