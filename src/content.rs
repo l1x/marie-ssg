@@ -219,7 +219,7 @@ pub(crate) fn convert_content(content: &Content, path: PathBuf) -> Result<String
 
 /// Extracts an HTML excerpt from markdown content using a specified pattern.
 ///
-/// This function searches for a specific pattern (typically "## Context") in
+/// This function searches for a specific pattern (typically "## Summary") in
 /// markdown content and extracts everything from that pattern until the next
 /// heading. The extracted markdown is then converted to HTML.
 ///

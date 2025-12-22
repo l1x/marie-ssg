@@ -1,240 +1,238 @@
 # Marie SSG
 
-A static site generator that does one thing well: convert markdown files into HTML pages.
+Actually Marie SSSSG (super simple static site generator)
 
-Marie follows a pipeline architecture. You write content in markdown with TOML metadata. Marie loads everything in parallel, renders through Jinja-style templates, and writes the output. Just files in, files out.
-
-## Quick Start
+## Usage
 
 ```bash
-
-# Build with a custom config
-marie-ssg build -c mysite.toml
-
-# Watch for changes and rebuild (macOS only)
-marie-ssg watch -c mysite.toml
-
 # Show version
 marie-ssg -V
-```
+marie-ssg --version
 
-## Project Structure
+# Build site with default config (site.toml)
+marie-ssg build
 
-Marie expects this layout:
+# Build site with custom config file
+marie-ssg build -c mysite.toml
+marie-ssg build --config-file mysite.toml
 
-```
-your-site/
-├── site.toml           # Configuration
-├── content/            # Markdown files + metadata
-│   ├── posts/
-│   │   ├── hello.md
-│   │   └── hello.meta.toml
-│   └── pages/
-│       ├── about.md
-│       └── about.meta.toml
-├── templates/          # Jinja-style HTML templates
-│   ├── post.html
-│   ├── posts_index.html
-│   ├── page.html
-│   └── site_index.html
-├── static/             # CSS, images, fonts (copied as-is)
-└── output/             # Generated site
-```
-
-**Content types** come from directory names. Files in `content/posts/` use the "posts" content type. Files in `content/pages/` use "pages". Each type can have its own template and index page.
-
-## Configuration
-
-Create a `site.toml` in your project root:
-
-```toml
-[site]
-# Mandatory fields - metadata
-title = "My Site"
-tagline = "A blog about things"
-domain = "example.com"
-author = "Your Name"
-# Mandatory fields - directories & files
-output_dir = "output"
-content_dir = "content"
-template_dir = "templates"
-static_dir = "static"
-site_index_template = "site_index.html"
-
-# Content type configuration
-[content.posts]
-index_template = "posts_index.html"
-content_template = "post.html"
-output_naming = "date"              # Prefix output files with date
-
-[content.pages]
-index_template = "pages_index.html"
-content_template = "page.html"
-
-# Files copied to output root
-[site.root_static]
-"favicon.ico" = "favicon.ico"
-"robots.txt" = "robots.txt"
-
-# Custom variables available in templates
-[dynamic]
-github_url = "https://github.com/you"
-```
-
-## Templates
-
-Marie uses [minijinja](https://github.com/mitsuhiko/minijinja) for templating. Templates receive the full config plus content-specific data.
-
-```html
-<!-- templates/post.html -->
-<html>
-  <head>
-    <title>{{ title }} | {{ config.site.title }}</title>
-  </head>
-  <body>
-    <h1>{{ title }}</h1>
-    <time>{{ date }}</time>
-    {{ content }}
-  </body>
-</html>
-```
-
-**Template naming convention:**
-
-- `post.html` renders individual posts
-- `posts_index.html` renders the posts listing
-- `site_index.html` renders the homepage
-
-Include shared partials with `{% include "header.html" %}`.
-
-## Development
-
-### Prerequisites
-
-This project uses [mise](https://mise.jdx.dev/) for task running and Rust toolchain management.
-
-```bash
-# Install mise (if needed)
-brew install mise
-
-# Install project dependencies
-mise install
-```
-
-### Build Tasks
-
-```bash
-mise run lint                  # Clippy with warnings as errors
-mise run tests                 # Run all tests
-mise run build-dev             # Debug build
-mise run build-prod            # Release build (optimized)
-```
-
-### Running Tests
-
-Marie has 86% test coverage with unit and integration tests.
-
-```bash
-cargo test                           # All tests
-cargo test --test integration_test   # Integration tests only
-cargo tarpaulin --out Stdout         # Coverage report
-```
-
-### Issue Tracking
-
-We track work with [beads](https://github.com/beads-project/beads), a git-native issue tracker.
-
-```bash
-mise run show-issues           # List open issues
-mise run show-ready            # Work with no blockers
-mise run show-blocked          # Blocked issues
-mise run show-issue-stats      # Project statistics
-
-# Or use bd directly
-bd create --title="Fix bug" --type=bug --priority=2
-bd update mar-xxx --status=in_progress
-bd close mar-xxx
-```
-
-## How It Works
-
-1. **Config** — Parses `site.toml` into typed structs
-2. **Discovery** — Finds all `.md` files under `content/`
-3. **Parallel loading** — Uses Rayon to load and convert markdown concurrently
-4. **Template caching** — Initializes templates once, reuses for all renders
-5. **Output** — Writes HTML files and copies static assets
-
-The key data structure is `LoadedContent`: it holds the markdown, converted HTML, content type, and output path. Content loads once and feeds both individual pages and index generation.
-
-## Code Layout
-
-```
-src/
-├── main.rs       # CLI and orchestration
-├── config.rs     # Configuration types and loading
-├── content.rs    # Markdown processing and metadata
-├── template.rs   # Template rendering with minijinja
-├── output.rs     # File writing and static copying
-├── utils.rs      # Path handling and content type detection
-└── error.rs      # Error types with thiserror
-```
-
-## Dependencies
-
-```
--> cargo tree --depth 1
-marie-ssg v0.6.0 (/.../marie-ssg)
-├── argh v0.1.13
-├── basic-toml v0.1.10
-├── chrono v0.4.41
-├── fsevent v2.3.0
-├── markdown v1.0.0
-├── minijinja v2.14.0
-├── minijinja-contrib v2.14.0
-├── rayon v1.11.0
-├── serde v1.0.228
-├── thiserror v2.0.16
-├── tracing v0.1.41
-├── tracing-subscriber v0.3.19
-└── walkdir v2.5.0
-[dev-dependencies]
-├── assert_cmd v2.1.1
-├── criterion v0.5.1
-├── predicates v3.1.3
-├── scraper v0.25.0
-└── tempfile v3.21.0
+# Show help
+marie-ssg --help
+marie-ssg build --help
 ```
 
 ## Version History
 
-### v0.6.0 (2025-12-22)
+### v0.5.0 (2025-12-20) - CLI Improvements
 
-- Added `all_content` variable to index templates for tag counting
+**CLI Changes:**
 
-### v0.5.0 (2025-12-20)
+- **Added version flag**: `-V` / `--version` prints the version from Cargo.toml
+- **Introduced subcommand structure**: Build functionality moved to `build` subcommand
+- **Config option on build**: `-c` / `--config-file` option now on the `build` subcommand
+- **Cleaner output**: Removed unnecessary "Starting up..." and "ok" log messages
 
-- Added `watch` subcommand for automatic rebuilds (macOS)
-- Moved build to subcommand structure (`marie-ssg build`)
-- Added `-V` / `--version` flag
+### v0.4.0 (2025-12-15) - Testing & Quality Improvements
 
-### v0.4.0 (2025-12-15)
+**Testing Infrastructure:**
 
-- Reached 86% test coverage with integration tests
-- Added HTML DOM validation in tests using `scraper`
-- Refactored template rendering for testability
+- **Comprehensive integration testing**: Added CLI-based integration tests with HTML DOM validation using `scraper` library
+- **Test coverage increased**: From 57.93% to 86.35% (exceeding 80% goal)
+- **HTML parsing validation**: Tests now validate actual HTML structure and content, not just file existence
+- **Complete test fixtures**: Created realistic example site in `tests/fixtures/simple_site/` demonstrating all features
+- **Template rendering tests**: Added unit tests for template functions with proper DOM validation
 
-### v0.3.0 (2025-10-14)
+**Code Quality Improvements:**
 
-- Added template caching with `OnceLock`
-- Introduced nested config structure
-- Added `[dynamic]` section for custom template variables
+- **Refactored template rendering**: Changed from implicit `OnceLock` access to explicit `&Environment` parameter passing
+- **Improved testability**: Template functions now accept environment as parameter, enabling isolated unit testing
+- **64 total tests**: 54 unit tests + 10 integration tests, all passing
+- **Module coverage**:
+  - src/main.rs: 0% → 95.6%
+  - src/template.rs: 83.9% → 100%
+  - src/output.rs: 68.1% → 75.5%
 
-### v0.2.0 (2025-10-10)
+**Dependencies Added:**
 
-- Parallel content loading with Rayon
-- Single-pass content loading (66% fewer I/O operations)
-- Build timing instrumentation
+- `scraper` - HTML parsing with CSS selectors for integration test validation
+- `assert_cmd` - CLI application testing framework
+- `predicates` - Assertion library for CLI output validation
 
-### v0.1.0
+### v0.3.0 (2025-10-14) - Configuration Changes
 
-- Initial release with core SSG functionality
+**Performance Improvements:**
+
+- **Implemented template caching**: Added `OnceLock<Environment>` to reuse template environment instead of recreating for each render
+- **Added build tooling**: Introduced `mise.toml` with standardized build tasks (lint, test, build-dev/prod)
+- **Removed manual progress markers**: Cleaned up debug comments from parallel processing implementation
+
+**Configuration Architecture:**
+
+- **Introduced nested config structure**: Created `SiteConfig` struct to organize site settings under `config.site.*`
+- **Added dynamic variables**: New `config.dynamic` HashMap for custom template variables
+- **Changed content_types handling**: Switched from `#[serde(flatten)]` to `#[serde(default)]` for better default handling
+
+**Documentation Transformation:**
+
+- **Completely restructured README**:
+  - Added comprehensive version history with detailed v0.2.0 performance improvements
+  - Added development workflow section showing mise tasks
+  - Removed 50+ line code review todo list (moved to internal documentation)
+- **Added project description**: "Actually Marie SSSSG (super simple static site generator)"
+
+### v0.2.0 (2025-10-10) - Performance & Observability
+
+**Performance Improvements:**
+
+- **Single-pass content loading** - Eliminated duplicate file reads (66% fewer I/O operations)
+- **Parallel processing with Rayon** - Content loading now runs in parallel across CPU cores
+- **Optimized architecture** - Content loaded once, reused for page rendering and indexes
+- **Build timing instrumentation** - Added performance metrics logging
+
+**Observability:**
+
+- **Enhanced logging** - Full source → output path tracing for all content
+- **Progress indicators** - Shows which files are being processed
+- **Better error context** - Improved error messages with file paths
+
+**Code Quality:**
+
+- **Removed dead code** - All struct fields now actively used
+- **Production-ready error handling** - Proper Result propagation throughout
+- **Clean compilation** - No warnings, all tests passing
+
+### v0.1.0 - Initial Release
+
+**Core Features:**
+
+- Static site generation from markdown files
+- TOML-based metadata system (`.meta.toml` files)
+- Flexible content type system
+- Template-based rendering with Jinja-style templates
+- Automatic index generation per content type
+- Site-wide index page
+- Static asset copying (CSS, images, fonts)
+- Date-prefixed output naming (configurable per content type)
+- Clean separation of concerns across modules
+
+## Running tasks in the repo
+
+```bash
+➜  mise tasks --all
+Name                     Description
+build-dev                Building the development version
+build-prod               Building the development version
+build-prod-with-timings  Building the development version
+lint                     Running linting
+tests                    Running tests
+```
+
+## Testing
+
+Marie SSG has comprehensive test coverage (86.35%):
+
+```bash
+# Run all tests (unit + integration)
+cargo test
+
+# Run only integration tests
+cargo test --test integration_test
+
+# Run with coverage report
+cargo tarpaulin --out Stdout
+
+# Run specific test
+cargo test test_blog_index_sorting
+```
+
+**Test Types:**
+- **Unit tests** (54): Test individual functions and modules
+- **Integration tests** (10): End-to-end CLI testing with HTML validation
+- **Test fixtures**: Complete example site in `tests/fixtures/simple_site/`
+
+**What's Tested:**
+- ✅ Configuration loading and validation
+- ✅ Markdown to HTML conversion
+- ✅ Template rendering with metadata
+- ✅ Multiple content types (blog, pages)
+- ✅ Index generation and date-based sorting
+- ✅ Static file copying
+- ✅ Excerpt extraction
+- ✅ HTML structure validation via DOM parsing
+- ✅ Error handling
+
+## Code organization
+
+```
+src/
+├── main.rs              # CLI entry point & application logic
+├── error.rs             # Error types (RunError, ConfigError, ContentError, StaticError, WriteError)
+├── config.rs            # Config types + loading (Config, SiteConfig, ContentTypeConfig)
+├── content.rs           # Content processing (Content, ContentMeta, ContentItem, load_content, convert_content)
+├── template.rs          # Template rendering (init_environment, render_html, render_index_from_loaded)
+├── utils.rs             # Utility functions (find_markdown_files, get_output_path, content type handling)
+└── output.rs            # Output operations (write_output_file, copy_static_files)
+
+tests/
+├── integration_test.rs  # CLI integration tests with HTML validation
+└── fixtures/
+    └── simple_site/     # Complete example site for testing and demonstration
+        ├── content/     # Sample markdown files with metadata
+        ├── templates/   # Example templates (blog, pages, indexes)
+        ├── static/      # Static assets (CSS, favicon, robots.txt)
+        └── site.toml    # Full configuration example
+```
+
+## Content types
+
+```
+content/
+├── posts/
+│ ├── my-first-post.md
+│ ├── my-first-post.meta.toml
+│ ├── another-post.md
+│ └── another-post.meta.toml
+└── pages/
+  ├── about.md
+  └── about.meta.toml
+```
+
+## Templates
+
+```
+templates/
+├── post.html               # For individual posts
+├── post_index.html         # For posts listing
+├── page.html               # For individual pages
+├── page_index.html         # For pages listing
+├── site_index.html         # For main site index
+├── head.html               # Common head section
+└── footer.html             # Common footer
+```
+
+- Dynamically loads all templates: Scans the template directory and loads all .html files, using the filename (without extension) as the template name.
+- Content-type-based templates: Uses the content type directory name as the default template name (e.g., content in posts/ uses post.html template).
+- Per-content template override: Allows specifying a different template in the metadata of individual content files.
+- Automatic index generation: Creates index pages for each content type using [content_type]\_index.html templates (e.g., posts_index.html).
+- Site-wide index: Generates a main site index using site_index.html template.
+- Flexible structure: No hardcoded template names - everything is determined by the file structure and optional metadata.
+
+## Project management
+
+We track work with `bd`, the Birdseye CLI. Helpful commands:
+
+```bash
+bd list --status open         # show open tickets
+bd ready                      # list work with no blockers
+bd update <id> --status X     # move ticket through the workflow
+```
+
+### Active tickets
+
+- mar-ex5 [P2] [task] open - Stream markdown processing in parallel
+
+### Recently completed
+
+- mar-3jw [P2] [task] closed - Increase test coverage from 46% to 80% (achieved 86.35%)
+- mar-tap [P2] [task] closed - Reuse cached template environment
+- mar-3xs [P2] [task] closed - Skip copying unchanged static assets

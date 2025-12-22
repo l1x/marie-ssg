@@ -363,7 +363,7 @@ fn test_excerpt_in_blog_index() {
     // First post excerpt (after sorting - this is the second post)
     assert!(
         excerpt_texts[0].contains("Testing date sorting"),
-        "Should extract excerpt from Context section"
+        "Should extract excerpt from Summary section"
     );
 }
 

@@ -2,7 +2,7 @@
 
 Another post to test multiple content items.
 
-## Context
+## Summary
 
 Testing date sorting and multiple posts in index.
 

@@ -2,7 +2,7 @@
 
 This is my first blog post!
 
-## Context
+## Summary
 
 This post demonstrates basic markdown rendering with headings, paragraphs, and lists.
 
