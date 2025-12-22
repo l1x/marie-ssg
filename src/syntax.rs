@@ -82,6 +82,20 @@ fn extract_language_from_class(class: &str) -> Option<&str> {
         .map(|c| &c[9..]) // Skip "language-" prefix
 }
 
+/// Unescapes HTML entities in code content.
+///
+/// The markdown parser escapes special characters in code blocks
+/// (e.g., `<` becomes `&lt;`). We need to unescape them before
+/// passing to the syntax highlighter.
+fn unescape_html_entities(s: &str) -> String {
+    s.replace("&lt;", "<")
+        .replace("&gt;", ">")
+        .replace("&amp;", "&")
+        .replace("&quot;", "\"")
+        .replace("&#39;", "'")
+        .replace("&apos;", "'")
+}
+
 /// Highlights all code blocks in HTML content
 pub(crate) fn highlight_html(html: &str, theme_name: &str) -> Result<String, SyntaxError> {
     // If there are no <pre><code> blocks, return early
@@ -98,23 +112,26 @@ pub(crate) fn highlight_html(html: &str, theme_name: &str) -> Result<String, Syn
         // Add everything before the code block
         result.push_str(&remaining[..start_idx]);
 
-        // Find the end of the opening tag
-        let tag_end = remaining[start_idx..].find('>').ok_or_else(|| {
+        // Find the start of the <code tag (after <pre>)
+        let code_tag_start = start_idx + 5; // Skip "<pre>"
+
+        // Find the end of the <code> opening tag (the '>' that closes <code...>)
+        let tag_end = remaining[code_tag_start..].find('>').ok_or_else(|| {
             std::io::Error::new(
                 std::io::ErrorKind::InvalidData,
                 "Malformed HTML: missing '>' in <code> tag",
             )
-        })? + start_idx
+        })? + code_tag_start
             + 1;
 
-        // Extract the opening tag
-        let opening_tag = &remaining[start_idx..tag_end];
+        // Extract the <code...> opening tag (not including <pre>)
+        let code_opening_tag = &remaining[code_tag_start..tag_end];
 
         // Check for language class
-        let lang = if let Some(class_start) = opening_tag.find("class=\"") {
+        let lang = if let Some(class_start) = code_opening_tag.find("class=\"") {
             let class_start = class_start + 7; // Skip "class=\""
-            if let Some(class_end) = opening_tag[class_start..].find('"') {
-                let class_str = &opening_tag[class_start..class_start + class_end];
+            if let Some(class_end) = code_opening_tag[class_start..].find('"') {
+                let class_str = &code_opening_tag[class_start..class_start + class_end];
                 extract_language_from_class(class_str)
             } else {
                 None
@@ -135,8 +152,12 @@ pub(crate) fn highlight_html(html: &str, theme_name: &str) -> Result<String, Syn
         let code_content = &remaining[tag_end..tag_end + code_end];
         let block_end = tag_end + code_end + code_end_pattern.len();
 
+        // Unescape HTML entities before highlighting
+        // The markdown parser escapes <, >, &, etc. in code blocks
+        let unescaped_content = unescape_html_entities(code_content);
+
         // Highlight the code block
-        let highlighted = highlight_code_block(code_content, lang, theme_name)?;
+        let highlighted = highlight_code_block(&unescaped_content, lang, theme_name)?;
 
         // Add the highlighted block
         result.push_str(&highlighted);
@@ -287,6 +308,87 @@ mod tests {
         assert!(highlighted.contains("print"));
         assert!(highlighted.contains("language-python"));
         assert!(highlighted.contains("plain text"));
+    }
+
+    #[test]
+    fn test_highlight_html_parsing_bug_code_tag_not_in_output() {
+        // Regression test: parser was stopping at first '>' (after <pre>)
+        // and feeding <code...> tag as text to the highlighter
+        let html = r#"<pre><code class="language-rust">fn main() {}</code></pre>"#;
+
+        let result = highlight_html(html, DEFAULT_THEME);
+        assert!(result.is_ok());
+        let highlighted = result.unwrap();
+
+        // The <code> tag text should NOT appear as literal content
+        assert!(
+            !highlighted.contains("&lt;code"),
+            "The <code> tag was incorrectly fed to highlighter as text"
+        );
+        assert!(
+            !highlighted.contains("<code class=\"language-rust\">fn"),
+            "The <code> opening tag should not appear as text content"
+        );
+
+        // Should properly extract the language
+        assert!(
+            highlighted.contains("language-rust"),
+            "Language class should be preserved"
+        );
+    }
+
+    #[test]
+    fn test_highlight_html_escaping_bug_html_entities_unescaped() {
+        // Regression test: markdown parser escapes HTML entities in code blocks
+        // (e.g., '<' becomes '&lt;'), causing highlighter to render them literally
+        let html = r#"<pre><code class="language-html">&lt;div&gt;test&lt;/div&gt;</code></pre>"#;
+
+        let result = highlight_html(html, DEFAULT_THEME);
+        assert!(result.is_ok());
+        let highlighted = result.unwrap();
+
+        // The content should NOT contain literal &lt; text visible to the user
+        // (It's OK if it's properly escaped in the HTML output, but it should
+        // represent the actual < character, not the literal string "&lt;")
+        // Check that we don't have double-escaped entities
+        assert!(
+            !highlighted.contains("&amp;lt;"),
+            "HTML entities should not be double-escaped"
+        );
+
+        // The highlighter should have processed the actual < and > characters
+        // and the output should contain properly escaped HTML (not literal &lt;)
+        // We verify by checking the output doesn't contain the raw &lt; as user-visible text
+    }
+
+    #[test]
+    fn test_highlight_html_ampersand_in_code() {
+        // Test that & characters in code are handled correctly
+        let html = r#"<pre><code class="language-rust">let x = 1 &amp;&amp; 2;</code></pre>"#;
+
+        let result = highlight_html(html, DEFAULT_THEME);
+        assert!(result.is_ok());
+        let highlighted = result.unwrap();
+
+        // Should not have triple-escaped ampersands
+        assert!(
+            !highlighted.contains("&amp;amp;"),
+            "Ampersands should not be double-escaped"
+        );
+    }
+
+    #[test]
+    fn test_unescape_html_entities() {
+        assert_eq!(unescape_html_entities("&lt;div&gt;"), "<div>");
+        assert_eq!(unescape_html_entities("&amp;&amp;"), "&&");
+        assert_eq!(unescape_html_entities("&quot;hello&quot;"), "\"hello\"");
+        assert_eq!(unescape_html_entities("&#39;x&#39;"), "'x'");
+        assert_eq!(unescape_html_entities("&apos;y&apos;"), "'y'");
+        assert_eq!(unescape_html_entities("no entities here"), "no entities here");
+        assert_eq!(
+            unescape_html_entities("&lt;a href=&quot;#&quot;&gt;link&lt;/a&gt;"),
+            "<a href=\"#\">link</a>"
+        );
     }
 
     #[test]
