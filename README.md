@@ -179,6 +179,32 @@ src/
 └── error.rs      # Error types with thiserror
 ```
 
+## Dependencies
+
+```
+-> cargo tree --depth 1
+marie-ssg v0.5.2 (/.../marie-ssg)
+├── argh v0.1.13
+├── basic-toml v0.1.10
+├── chrono v0.4.41
+├── fsevent v2.3.0
+├── markdown v1.0.0
+├── minijinja v2.14.0
+├── minijinja-contrib v2.14.0
+├── rayon v1.11.0
+├── serde v1.0.228
+├── thiserror v2.0.16
+├── tracing v0.1.41
+├── tracing-subscriber v0.3.19
+└── walkdir v2.5.0
+[dev-dependencies]
+├── assert_cmd v2.1.1
+├── criterion v0.5.1
+├── predicates v3.1.3
+├── scraper v0.25.0
+└── tempfile v3.21.0
+```
+
 ## Version History
 
 ### v0.5.0 (2025-12-20)
