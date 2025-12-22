@@ -54,6 +54,8 @@ target/
 # Note: For applications, you typically COMMIT Cargo.lock.
 # For libraries, you typically IGNORE it.
 Cargo.lock
+# Test coverage reports (cargo-tarpaulin)
+coverage/
 
 # ===================================================================
 # TypeScript / Node.js

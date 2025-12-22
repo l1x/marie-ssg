@@ -17,6 +17,10 @@ run = "cargo clippy -- -D warnings && cargo test"
 description = "Running tests"
 run = "cargo test -- --nocapture"
 
+[tasks.coverage]
+description = "Run tests with coverage report (requires cargo-tarpaulin)"
+run = "cargo tarpaulin --out Html --output-dir coverage"
+
 [tasks.build-dev]
 description = "Building the development version"
 run = "cargo build"

@@ -12,6 +12,7 @@ mise run lint                       # Run cargo lint (formatting + style checks)
 mise run tests                      # Run all tests with --nocapture
 mise run unit-tests                 # Run unit tests only
 mise run integration-tests          # Run integration tests only
+mise run coverage                   # Run tests with coverage report (HTML in coverage/)
 mise run build-dev                  # Development build
 mise run build-prod                 # Release build (optimized for size)
 cargo test <test_name>              # Run a single test
@@ -210,3 +211,20 @@ fn my_function() -> Result<(), RunError> {
 ## Verification
 
 - Run `mise run verify` before commits (runs lint + tests)
+
+## Test Coverage
+
+Generate test coverage reports with cargo-tarpaulin:
+
+```bash
+# Install tarpaulin (one-time setup)
+cargo install cargo-tarpaulin
+
+# Generate HTML coverage report
+mise run coverage
+
+# View report
+open coverage/tarpaulin-report.html
+```
+
+The coverage report is generated in `coverage/` directory (git-ignored).
