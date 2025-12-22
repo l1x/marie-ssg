@@ -96,7 +96,7 @@ syntax_highlighting_theme = "github_dark"
 
 Marie supports syntax highlighting for these languages:
 
-https://github.com/leandrocp/autumnus?tab=readme-ov-file#selective-language-support
+[Autumnus language support](https://github.com/leandrocp/autumnus?tab=readme-ov-file#selective-language-support)
 
 ### Themes
 
