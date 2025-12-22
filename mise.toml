@@ -27,7 +27,7 @@ run = "cargo build --release --timings"
 
 [tasks.show-issues]
 description = "List all open issues"
-run = "bd list --status open"
+run = "bd list"
 
 [tasks.show-ready]
 description = "Show ready work (no blockers)"
