@@ -433,4 +433,72 @@ mod tests {
         let rendered = result.unwrap();
         assert!(rendered.contains("This is the excerpt"));
     }
+
+    #[test]
+    fn test_render_index_with_all_content() {
+        let temp_dir = TempDir::new().unwrap();
+        let template_path = temp_dir.path().join("index.html");
+
+        std::fs::write(
+            &template_path,
+            r#"<h1>{{ config.site.title }}</h1>
+            <p>Filtered: {{ contents | length }} items</p>
+            <p>All: {{ all_content | length }} items</p>
+            {% for item in all_content %}
+            <span class="all-item">{{ item.meta.title }}</span>
+            {% endfor %}"#,
+        )
+        .unwrap();
+
+        let mut env = Environment::new();
+        env.set_loader(path_loader(temp_dir.path()));
+        let config = create_test_config(temp_dir.path().to_str().unwrap(), "output");
+
+        // Create two test LoadedContent items
+        let mut meta1 = create_test_meta();
+        meta1.title = "First Post".to_string();
+        meta1.date = DateTime::parse_from_rfc3339("2024-01-15T10:00:00-05:00").unwrap();
+
+        let mut meta2 = create_test_meta();
+        meta2.title = "Second Post".to_string();
+        meta2.date = DateTime::parse_from_rfc3339("2024-02-15T10:00:00-05:00").unwrap();
+
+        let loaded1 = LoadedContent {
+            path: PathBuf::from("first.md"),
+            content: crate::content::Content {
+                meta: meta1,
+                data: "# First".to_string(),
+            },
+            html: "<h1>First</h1>".to_string(),
+            content_type: "blog".to_string(),
+            output_path: PathBuf::from("output/blog/first.html"),
+        };
+
+        let loaded2 = LoadedContent {
+            path: PathBuf::from("second.md"),
+            content: crate::content::Content {
+                meta: meta2,
+                data: "# Second".to_string(),
+            },
+            html: "<h1>Second</h1>".to_string(),
+            content_type: "blog".to_string(),
+            output_path: PathBuf::from("output/blog/second.html"),
+        };
+
+        // Pass only first item in filtered list, but both in all_content
+        let result = render_index_from_loaded(
+            &env,
+            &config,
+            "index.html",
+            vec![&loaded1],
+            vec![&loaded1, &loaded2],
+        );
+
+        assert!(result.is_ok());
+        let rendered = result.unwrap();
+        assert!(rendered.contains("Filtered: 1 items"));
+        assert!(rendered.contains("All: 2 items"));
+        assert!(rendered.contains("First Post"));
+        assert!(rendered.contains("Second Post"));
+    }
 }
