@@ -1,10 +1,11 @@
 [package]
 name = "marie-ssg"
-version = "0.6.0"
+version = "0.7.0"
 edition = "2024"
 
 [dependencies]
 argh = { version = "0" }
+autumnus = { version = "0.7" }
 basic-toml = { version = "0" }
 chrono = { version = "0", features = ["serde"] }
 markdown = { version = "1" }
@@ -44,3 +45,9 @@ lto = true  # reduces binary size
 panic = "abort"  # reduces binary size
 incremental = true  # Improves re-compile times
 codegen-units = 1  # reduces binary size
+
+[profile.profiling]
+inherits = "release"  # Use all the optimization settings from the release profile
+debug = true  # Include debug info so 'perf' can find function names
+split-debuginfo = "off"  # Keep debug info in the binary
+strip = false  # Do NOT strip symbols

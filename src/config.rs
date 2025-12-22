@@ -4,6 +4,8 @@ use serde::{Deserialize, Serialize};
 use std::{collections::HashMap, fs};
 use thiserror::Error;
 
+use crate::syntax::DEFAULT_THEME;
+
 #[derive(Debug, Deserialize, Serialize)]
 pub(crate) struct Config {
     /// Site
@@ -50,9 +52,23 @@ pub(crate) struct SiteConfig {
     pub static_dir: String,
     /// Template for the site-wide index page
     pub site_index_template: String,
+    /// Enable syntax highlighting for code blocks
+    #[serde(default = "default_true")]
+    pub syntax_highlighting_enabled: bool,
+    /// Theme to use for syntax highlighting (e.g., "github_dark", "monokai")
+    #[serde(default = "default_syntax_theme")]
+    pub syntax_highlighting_theme: String,
     /// Static files that should be copied to the output root (e.g., favicon.ico, robots.txt)
     #[serde(default)]
     pub root_static: HashMap<String, String>,
+}
+
+fn default_true() -> bool {
+    true
+}
+
+fn default_syntax_theme() -> String {
+    DEFAULT_THEME.to_string()
 }
 
 #[derive(Error, Debug)]

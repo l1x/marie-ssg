@@ -81,6 +81,52 @@ content_template = "page.html"
 github_url = "https://github.com/you"
 ```
 
+## Syntax Highlighting
+
+Marie includes built-in syntax highlighting for code blocks using the [Autumnus](https://crates.io/crates/autumnus) library. To enable syntax highlighting, add these fields to your `[site]` configuration:
+
+```toml
+[site]
+# ... other fields ...
+syntax_highlighting_enabled = true
+syntax_highlighting_theme = "github_dark"
+```
+
+### Supported Languages
+
+Marie supports syntax highlighting for these languages:
+
+[Autumnus language support](https://github.com/leandrocp/autumnus?tab=readme-ov-file#selective-language-support)
+
+### Themes
+
+The default theme is `github_dark`. Autumnus supports many themes including:
+
+- `github_dark`, `github_light`
+- `monokai`
+- `solarized_dark`, `solarized_light`
+- `dracula`
+- And many more...
+
+### Usage in Markdown
+
+Use standard markdown code blocks with language identifiers:
+
+````markdown
+```rust
+fn main() {
+    println!("Hello, world!");
+}
+```
+
+```python
+def hello():
+    print("Hello, world!")
+```
+````
+
+The code blocks will be automatically highlighted in the generated HTML.
+
 ## Templates
 
 Marie uses [minijinja](https://github.com/mitsuhiko/minijinja) for templating. Templates receive the full config plus content-specific data.
@@ -126,6 +172,8 @@ mise install
 ```bash
 mise run lint                  # Clippy with warnings as errors
 mise run tests                 # Run all tests
+mise run unit-tests            # Run unit tests only
+mise run integration-tests     # Run integration tests only
 mise run build-dev             # Debug build
 mise run build-prod            # Release build (optimized)
 ```
@@ -133,6 +181,8 @@ mise run build-prod            # Release build (optimized)
 ### Running Tests
 
 Marie has 86% test coverage with unit and integration tests.
+
+You can use the mise tasks `unit-tests` and `integration-tests` for more targeted testing.
 
 ```bash
 cargo test                           # All tests
@@ -206,6 +256,13 @@ marie-ssg v0.6.0 (/.../marie-ssg)
 ```
 
 ## Version History
+
+### v0.7.0 (2025-12-23)
+
+- Added syntax highlighting for code blocks using Autumnus
+- Supported languages: Rust, Python, JavaScript, TypeScript, HTML, CSS, Bash, JSON, TOML, YAML
+- Configurable themes with `github_dark` as default
+- Enable via `syntax_highlighting_enabled` and `syntax_highlighting_theme` in site config
 
 ### v0.6.0 (2025-12-22)
 

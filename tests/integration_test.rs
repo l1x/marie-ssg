@@ -15,7 +15,6 @@ use std::fs;
 use std::path::{Path, PathBuf};
 use tempfile::TempDir;
 
-
 /// Helper to create a temporary working directory with test fixtures
 fn setup_test_site() -> TempDir {
     let temp_dir = TempDir::new().unwrap();
