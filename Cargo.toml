@@ -1,6 +1,6 @@
 [package]
 name = "marie-ssg"
-version = "0.5.0"
+version = "0.6.0"
 edition = "2024"
 
 [dependencies]
@@ -23,6 +23,9 @@ criterion = { version = "0", features = ["html_reports"] }
 predicates = { version = "3" }
 scraper = { version = "0" }
 tempfile = { version = "3" }
+
+[target.'cfg(target_os = "macos")'.dependencies]
+fsevent = { version = "2" }
 
 [profile.bench]
 lto = "thin"

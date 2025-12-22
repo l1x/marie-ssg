@@ -9,7 +9,9 @@ use crate::config::Config;
 use crate::content::{Content, convert_content, load_content};
 use crate::error::RunError;
 use crate::output::{copy_static_files, write_output_file};
-use crate::template::{init_environment, render_html, render_index_from_loaded};
+use crate::template::{
+    create_environment, init_environment, render_html, render_index_from_loaded,
+};
 use crate::utils::{
     add_date_prefix, find_markdown_files, get_content_type, get_content_type_template,
     get_output_path,
@@ -43,12 +45,22 @@ struct Argz {
 #[argh(subcommand)]
 enum SubCommand {
     Build(BuildArgs),
+    Watch(WatchArgs),
 }
 
 #[derive(FromArgs, Debug)]
 #[argh(subcommand, name = "build")]
 /// Build the static site
 struct BuildArgs {
+    /// path to the config file
+    #[argh(option, short = 'c', default = "default_config_file()")]
+    config_file: String,
+}
+
+#[derive(FromArgs, Debug)]
+#[argh(subcommand, name = "watch")]
+/// Watch for changes and rebuild automatically
+struct WatchArgs {
     /// path to the config file
     #[argh(option, short = 'c', default = "default_config_file()")]
     config_file: String,
@@ -64,21 +76,44 @@ pub(crate) struct LoadedContent {
     pub(crate) output_path: PathBuf,
 }
 
-/// The main entry point for the application logic.
+/// The main entry point for the application logic (uses cached templates).
 #[instrument(skip_all)]
-pub(crate) fn run(args: BuildArgs) -> Result<(), RunError> {
-    // loading config
-    debug!("Args: {:?}", args);
-    info!("Config file: {}", args.config_file);
-
-    let config = Config::load_from_file(&args.config_file).expect("Failed to load configuration");
-
-    // Initialize template environment once
+pub(crate) fn build(config_file: &str) -> Result<(), RunError> {
+    let config = Config::load_from_file(config_file).expect("Failed to load configuration");
     let env = init_environment(&config.site.template_dir);
+    run_build(config_file, &config, env)
+}
+
+/// Build with a fresh template environment (for watch mode).
+#[instrument(skip_all)]
+pub(crate) fn build_fresh(config_file: &str) -> Result<(), RunError> {
+    let config = Config::load_from_file(config_file).expect("Failed to load configuration");
+    let env = create_environment(&config.site.template_dir);
+    run_build(config_file, &config, &env)
+}
+
+/// Get the list of file paths/directories to watch for changes.
+pub(crate) fn get_paths_to_watch(config_file: &str, config: &Config) -> Vec<String> {
+    vec![
+        config_file.to_string(),
+        config.site.content_dir.clone(),
+        config.site.template_dir.clone(),
+        config.site.static_dir.clone(),
+    ]
+}
+
+/// Core build logic that accepts a template environment.
+#[instrument(skip_all)]
+fn run_build(
+    config_file: &str,
+    config: &Config,
+    env: &minijinja::Environment,
+) -> Result<(), RunError> {
+    info!("Config file: {}", config_file);
 
     // 0. Copy static files first
     //
-    copy_static_files(&config)?;
+    copy_static_files(config)?;
 
     // 1. Find all markdown files in `config.content_dir`.
     //
@@ -132,12 +167,12 @@ pub(crate) fn run(args: BuildArgs) -> Result<(), RunError> {
             loaded.output_path.display()
         );
 
-        let content_template = get_content_type_template(&config, &loaded.content_type);
+        let content_template = get_content_type_template(config, &loaded.content_type);
         let rendered = render_html(
             env,
             &loaded.html,
             &loaded.content.meta,
-            &config,
+            config,
             &content_template,
         )?;
         write_output_file(&loaded.output_path, &rendered)?;
@@ -156,7 +191,13 @@ pub(crate) fn run(args: BuildArgs) -> Result<(), RunError> {
             .filter(|lc| &lc.content_type == content_type)
             .collect();
 
-        let index_rendered = render_index_from_loaded(env, &config, &v.index_template, filtered)?;
+        let index_rendered = render_index_from_loaded(
+            env,
+            config,
+            &v.index_template,
+            filtered,
+            loaded_contents.iter().collect(),
+        )?;
 
         let output_path = PathBuf::from(&config.site.output_dir)
             .join(content_type)
@@ -169,8 +210,9 @@ pub(crate) fn run(args: BuildArgs) -> Result<(), RunError> {
     //
     let site_index_rendered = render_index_from_loaded(
         env,
-        &config,
+        config,
         &config.site.site_index_template,
+        loaded_contents.iter().collect(),
         loaded_contents.iter().collect(),
     )?;
 
@@ -181,6 +223,69 @@ pub(crate) fn run(args: BuildArgs) -> Result<(), RunError> {
 
     info!("Process completed successfully.");
     Ok(())
+}
+
+/// Watch for file changes and rebuild automatically (macOS only)
+#[cfg(target_os = "macos")]
+fn watch(config_file: &str) -> Result<(), RunError> {
+    use std::sync::mpsc::channel;
+    use std::thread;
+    use std::time::{Duration, Instant};
+
+    // Load config to get directories to watch
+    let config = Config::load_from_file(config_file).expect("Failed to load configuration");
+
+    let paths_to_watch = get_paths_to_watch(config_file, &config);
+
+    info!("Watching directories: {:?}", paths_to_watch);
+    info!("Press Ctrl+C to stop");
+
+    // Initial build (use fresh environment from the start)
+    if let Err(e) = build_fresh(config_file) {
+        error!("Initial build failed: {:?}", e);
+    }
+
+    let (sender, receiver) = channel();
+
+    let _watcher_thread = thread::spawn(move || {
+        let fsevent = fsevent::FsEvent::new(paths_to_watch);
+        fsevent.observe(sender);
+    });
+
+    // Debounce: track last build time
+    let mut last_build = Instant::now();
+    let debounce_duration = Duration::from_millis(500);
+
+    loop {
+        match receiver.recv() {
+            Ok(events) => {
+                // Check debounce
+                if last_build.elapsed() < debounce_duration {
+                    debug!("Debouncing, skipping rebuild");
+                    continue;
+                }
+
+                info!("Changes detected: {:?}", events);
+                last_build = Instant::now();
+
+                if let Err(e) = build_fresh(config_file) {
+                    error!("Build failed: {:?}", e);
+                }
+            }
+            Err(e) => {
+                error!("Watch error: {:?}", e);
+                break;
+            }
+        }
+    }
+
+    Ok(())
+}
+
+#[cfg(not(target_os = "macos"))]
+fn watch(_config_file: &str) -> Result<(), RunError> {
+    eprintln!("Watch mode is only supported on macOS");
+    std::process::exit(1);
 }
 
 fn main() {
@@ -196,8 +301,13 @@ fn main() {
     }
 
     match argz.command {
-        Some(SubCommand::Build(build_args)) => {
-            if let Err(e) = run(build_args) {
+        Some(SubCommand::Build(args)) => {
+            if let Err(e) = build(&args.config_file) {
+                error!("{:?}", e);
+            }
+        }
+        Some(SubCommand::Watch(args)) => {
+            if let Err(e) = watch(&args.config_file) {
                 error!("{:?}", e);
             }
         }
@@ -205,5 +315,37 @@ fn main() {
             println!("marie-ssg {}", VERSION);
             println!("Use --help for usage information");
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_get_paths_to_watch() {
+        let toml = r#"
+[site]
+title = "Test Site"
+tagline = "A test tagline"
+domain = "example.com"
+author = "Test Author"
+output_dir = "output"
+content_dir = "content"
+template_dir = "templates"
+static_dir = "static"
+site_index_template = "index.html"
+"#;
+        let config = crate::config::Config::from_str(toml).unwrap();
+        let config_file = "site.toml";
+
+        let paths = get_paths_to_watch(config_file, &config);
+
+        // Should contain 4 paths: config file + 3 dirs
+        assert_eq!(paths.len(), 4);
+        assert!(paths.contains(&"site.toml".to_string()));
+        assert!(paths.contains(&"content".to_string()));
+        assert!(paths.contains(&"templates".to_string()));
+        assert!(paths.contains(&"static".to_string()));
     }
 }
