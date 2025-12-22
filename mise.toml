@@ -44,3 +44,11 @@ run = "bd stats"
 [tasks.show-issue-tree]
 description = "Show dependency tree for an issue (use: mise run issue-tree -- bd-1)"
 run = "bd dep tree"
+
+[tasks.unit-tests]
+description = "Run unit tests only"
+run = "cargo test --bin marie-ssg -- --nocapture"
+
+[tasks.integration-tests]
+description = "Run integration tests only"
+run = "cargo test --test integration_test -- --nocapture"

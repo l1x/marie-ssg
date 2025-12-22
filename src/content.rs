@@ -216,6 +216,7 @@ pub(crate) fn load_metadata(markdown_path: &Path) -> Result<ContentMeta, Content
 /// let html = convert_content(&content, PathBuf::from("test.md"))?;
 /// assert!(html.contains("<h1>Hello World</h1>"));
 /// ```
+#[allow(dead_code)]
 pub(crate) fn convert_content(content: &Content, path: PathBuf) -> Result<String, ContentError> {
     // Convert markdown to HTML using Comrak.
     match markdown::to_html_with_options(&content.data, &markdown::Options::gfm()) {
@@ -497,6 +498,68 @@ Should not be included.
 
         let result = convert_content(&content, PathBuf::from("test.md"));
         assert!(result.is_ok()); // Comrak is generally tolerant of invalid markdown
+    }
+
+    #[test]
+    fn test_convert_content_with_highlighting_enabled() {
+        let content = Content {
+            meta: create_test_metadata(),
+            data: "# Hello World\n\n```rust\nfn main() {\n    println!(\"test\");\n}\n```"
+                .to_string(),
+        };
+
+        let result = convert_content_with_highlighting(
+            &content,
+            PathBuf::from("test.md"),
+            true,
+            "github_dark",
+        );
+        assert!(result.is_ok());
+        let html = result.unwrap();
+        assert!(html.contains("<h1>Hello World</h1>"));
+        // Should have highlighted the code block
+        assert!(html.contains("fn"));
+        assert!(html.contains("main"));
+        assert!(html.contains("language-rust"));
+    }
+
+    #[test]
+    fn test_convert_content_with_highlighting_disabled() {
+        let content = Content {
+            meta: create_test_metadata(),
+            data: "# Hello World\n\n```rust\nfn main() {}\n```".to_string(),
+        };
+
+        let result = convert_content_with_highlighting(
+            &content,
+            PathBuf::from("test.md"),
+            false,
+            "github_dark",
+        );
+        assert!(result.is_ok());
+        let html = result.unwrap();
+        assert!(html.contains("<h1>Hello World</h1>"));
+        // Should have plain code block without highlighting
+        assert!(html.contains("<pre><code"));
+        // Should not have inline styles from highlighting
+        assert!(!html.contains("style="));
+    }
+
+    #[test]
+    fn test_convert_content_with_highlighting_unknown_language() {
+        let content = Content {
+            meta: create_test_metadata(),
+            data: "# Test\n\n```unknownlang\nsome code\n```".to_string(),
+        };
+
+        let result = convert_content_with_highlighting(
+            &content,
+            PathBuf::from("test.md"),
+            true,
+            "github_dark",
+        );
+        // Should still succeed - unknown languages fall back to plain text
+        assert!(result.is_ok());
     }
 
     #[test]

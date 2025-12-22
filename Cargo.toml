@@ -56,3 +56,9 @@ lto = true  # reduces binary size
 panic = "abort"  # reduces binary size
 incremental = true  # Improves re-compile times
 codegen-units = 1  # reduces binary size
+
+[profile.profiling]
+inherits = "release"  # Use all the optimization settings from the release profile
+debug = true  # Include debug info so 'perf' can find function names
+split-debuginfo = "off"  # Keep debug info in the binary
+strip = false  # Do NOT strip symbols

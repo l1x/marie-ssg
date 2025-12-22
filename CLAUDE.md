@@ -9,6 +9,8 @@ Marie SSG (Super Simple Static Site Generator) is a Rust-based static site gener
 ```bash
 mise run lint                       # Run cargo lint (formatting + style checks)
 mise run tests                      # Run all tests with --nocapture
+mise run unit-tests                 # Run unit tests only
+mise run integration-tests          # Run integration tests only
 mise run build-dev                  # Development build
 mise run build-prod                 # Release build (optimized for size)
 cargo test <test_name>              # Run a single test
@@ -48,6 +50,16 @@ Each content type can have:
 - An index template (e.g., `posts_index.html`)
 - Optional date-prefix output naming
 
+## Syntax Highlighting
+
+Marie includes syntax highlighting for code blocks using the Autumnus library:
+
+- Enabled by default (`syntax_highlighting_enabled = true`)
+- Supports Rust, Python, JavaScript, TypeScript, HTML, CSS, Bash, JSON, TOML, YAML
+- Theme configurable via `syntax_highlighting_theme` (default: "github_dark")
+- Code blocks in markdown are automatically highlighted during HTML conversion
+- Highlighting applied via `convert_content_with_highlighting()` in content pipeline
+
 ## Configuration Structure
 
 ```toml
@@ -61,6 +73,8 @@ template_dir = "templates"
 static_dir = "static"
 output_dir = "output"
 site_index_template = "site_index.html"
+syntax_highlighting_enabled = true          # Optional, defaults to true
+syntax_highlighting_theme = "github_dark"   # Optional, defaults to "github_dark"
 
 [site.root_static]
 "favicon.ico" = "favicon.ico"
@@ -77,3 +91,7 @@ site_index_template = "site_index.html"
 - Use `tracing` for logging with `#[instrument(skip_all)]` on key functions
 - Prefer `pub(crate)` for internal visibility
 - Use Rayon for parallel processing of independent operations
+
+## Verification
+
+- run `mise lint` and `mise test` before commits

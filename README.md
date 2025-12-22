@@ -182,6 +182,8 @@ mise install
 ```bash
 mise run lint                  # Clippy with warnings as errors
 mise run tests                 # Run all tests
+mise run unit-tests            # Run unit tests only
+mise run integration-tests     # Run integration tests only
 mise run build-dev             # Debug build
 mise run build-prod            # Release build (optimized)
 ```
@@ -189,6 +191,8 @@ mise run build-prod            # Release build (optimized)
 ### Running Tests
 
 Marie has 86% test coverage with unit and integration tests.
+
+You can use the mise tasks `unit-tests` and `integration-tests` for more targeted testing.
 
 ```bash
 cargo test                           # All tests

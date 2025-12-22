@@ -205,7 +205,6 @@ mod tests {
         let result = highlight_code_block(code, Some("rust"), DEFAULT_THEME);
         assert!(result.is_ok());
         let html = result.unwrap();
-        println!("HTML output: {}", html);
         // Should contain the code wrapped in <pre><code>
         assert!(html.contains("<pre"));
         assert!(html.contains("<code"));
@@ -229,6 +228,18 @@ mod tests {
         let code = "just plain text";
         let result = highlight_code_block(code, None, DEFAULT_THEME);
         assert!(result.is_ok());
+    }
+
+    #[test]
+    fn test_highlight_code_block_empty() {
+        let code = "";
+        let result = highlight_code_block(code, Some("rust"), DEFAULT_THEME);
+        assert!(result.is_ok());
+        let html = result.unwrap();
+        // Empty code block should still produce valid HTML
+        assert!(html.contains("<pre"));
+        assert!(html.contains("<code"));
+        assert!(html.contains("language-rust"));
     }
 
     #[test]
@@ -276,5 +287,24 @@ mod tests {
         assert!(highlighted.contains("print"));
         assert!(highlighted.contains("language-python"));
         assert!(highlighted.contains("plain text"));
+    }
+
+    #[test]
+    fn test_highlight_html_with_empty_code_block() {
+        let html = r#"<p>Before</p>
+<pre><code class="language-rust"></code></pre>
+<p>After</p>"#;
+
+        let result = highlight_html(html, DEFAULT_THEME);
+        assert!(result.is_ok());
+        let highlighted = result.unwrap();
+
+        // Should contain the original structure
+        assert!(highlighted.contains("<p>Before</p>"));
+        assert!(highlighted.contains("<p>After</p>"));
+        // Should have empty code block with language class
+        assert!(highlighted.contains("language-rust"));
+        assert!(highlighted.contains("<pre"));
+        assert!(highlighted.contains("<code"));
     }
 }
