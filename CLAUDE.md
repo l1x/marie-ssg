@@ -7,6 +7,7 @@ Marie SSG (Super Simple Static Site Generator) is a Rust-based static site gener
 ## Build Commands
 
 ```bash
+mise run verify                     # Full verification (lint + tests) before commit
 mise run lint                       # Run cargo lint (formatting + style checks)
 mise run tests                      # Run all tests with --nocapture
 mise run unit-tests                 # Run unit tests only
@@ -94,4 +95,4 @@ syntax_highlighting_theme = "github_dark"   # Optional, defaults to "github_dark
 
 ## Verification
 
-- run `mise lint` and `mise test` before commits
+- Run `mise run verify` before commits (runs lint + tests)
