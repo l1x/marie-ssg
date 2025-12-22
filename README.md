@@ -183,7 +183,7 @@ src/
 
 ```
 -> cargo tree --depth 1
-marie-ssg v0.5.2 (/.../marie-ssg)
+marie-ssg v0.6.0 (/.../marie-ssg)
 ├── argh v0.1.13
 ├── basic-toml v0.1.10
 ├── chrono v0.4.41
@@ -206,6 +206,10 @@ marie-ssg v0.5.2 (/.../marie-ssg)
 ```
 
 ## Version History
+
+### v0.6.0 (2025-12-22)
+
+- Added `all_content` variable to index templates for tag counting
 
 ### v0.5.0 (2025-12-20)
 

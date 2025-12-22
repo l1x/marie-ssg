@@ -9,7 +9,9 @@ use crate::config::Config;
 use crate::content::{Content, convert_content, load_content};
 use crate::error::RunError;
 use crate::output::{copy_static_files, write_output_file};
-use crate::template::{create_environment, init_environment, render_html, render_index_from_loaded};
+use crate::template::{
+    create_environment, init_environment, render_html, render_index_from_loaded,
+};
 use crate::utils::{
     add_date_prefix, find_markdown_files, get_content_type, get_content_type_template,
     get_output_path,
@@ -102,7 +104,11 @@ pub(crate) fn get_paths_to_watch(config_file: &str, config: &Config) -> Vec<Stri
 
 /// Core build logic that accepts a template environment.
 #[instrument(skip_all)]
-fn run_build(config_file: &str, config: &Config, env: &minijinja::Environment) -> Result<(), RunError> {
+fn run_build(
+    config_file: &str,
+    config: &Config,
+    env: &minijinja::Environment,
+) -> Result<(), RunError> {
     info!("Config file: {}", config_file);
 
     // 0. Copy static files first
@@ -185,7 +191,13 @@ fn run_build(config_file: &str, config: &Config, env: &minijinja::Environment) -
             .filter(|lc| &lc.content_type == content_type)
             .collect();
 
-        let index_rendered = render_index_from_loaded(env, config, &v.index_template, filtered)?;
+        let index_rendered = render_index_from_loaded(
+            env,
+            config,
+            &v.index_template,
+            filtered,
+            loaded_contents.iter().collect(),
+        )?;
 
         let output_path = PathBuf::from(&config.site.output_dir)
             .join(content_type)
@@ -200,6 +212,7 @@ fn run_build(config_file: &str, config: &Config, env: &minijinja::Environment) -
         env,
         config,
         &config.site.site_index_template,
+        loaded_contents.iter().collect(),
         loaded_contents.iter().collect(),
     )?;
 
@@ -325,9 +338,9 @@ site_index_template = "index.html"
 "#;
         let config = crate::config::Config::from_str(toml).unwrap();
         let config_file = "site.toml";
-        
+
         let paths = get_paths_to_watch(config_file, &config);
-        
+
         // Should contain 4 paths: config file + 3 dirs
         assert_eq!(paths.len(), 4);
         assert!(paths.contains(&"site.toml".to_string()));

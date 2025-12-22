@@ -1,12 +1,12 @@
 // src/template.rs
 
-use minijinja::{context, path_loader, Environment};
+use minijinja::{Environment, context, path_loader};
 use minijinja_contrib::add_to_environment;
 use std::sync::OnceLock;
 
 use crate::{
     config::Config,
-    content::{get_excerpt_html, ContentItem, ContentMeta},
+    content::{ContentItem, ContentMeta, get_excerpt_html},
 };
 
 static ENV: OnceLock<Environment<'static>> = OnceLock::new();
@@ -34,6 +34,7 @@ pub(crate) fn render_index_from_loaded(
     config: &Config,
     index_template_name: &str,
     loaded: Vec<&crate::LoadedContent>,
+    all_content: Vec<&crate::LoadedContent>,
 ) -> Result<String, minijinja::Error> {
     let tmpl = env.get_template(index_template_name)?;
 
@@ -62,9 +63,35 @@ pub(crate) fn render_index_from_loaded(
 
     contents.sort_by(|a, b| b.meta.date.cmp(&a.meta.date));
 
+    let mut all_contents: Vec<ContentItem> = all_content
+        .iter()
+        .map(|lc| {
+            let filename = lc
+                .output_path
+                .strip_prefix(&config.site.output_dir)
+                .unwrap_or(&lc.output_path)
+                .to_string_lossy()
+                .to_string();
+
+            let excerpt = get_excerpt_html(&lc.content.data, "## Context");
+
+            ContentItem {
+                html: lc.html.clone(),
+                meta: lc.content.meta.clone(),
+                formatted_date: lc.content.meta.date.format("%B %d, %Y").to_string(),
+                filename,
+                content_type: lc.content_type.clone(),
+                excerpt,
+            }
+        })
+        .collect();
+
+    all_contents.sort_by(|a, b| b.meta.date.cmp(&a.meta.date));
+
     let context = context! {
         config => config,
         contents => contents,
+        all_content => all_contents,
     };
 
     tmpl.render(context)
@@ -95,9 +122,9 @@ pub(crate) fn render_html(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::LoadedContent;
     use crate::config::{Config, SiteConfig};
     use crate::content::ContentMeta;
-    use crate::LoadedContent;
     use chrono::DateTime;
     use minijinja::Environment;
     use std::collections::HashMap;
@@ -140,21 +167,19 @@ mod tests {
         // Create a temporary directory for templates
         let temp_dir = TempDir::new().unwrap();
         let template_path = temp_dir.path().join("test.html");
-        
+
         // Write a simple template - use 'safe' filter to render unescaped HTML
         std::fs::write(
             &template_path,
-            "<h1>{{ meta.title }}</h1><div>{{ content | safe }}</div>"
-        ).unwrap();
+            "<h1>{{ meta.title }}</h1><div>{{ content | safe }}</div>",
+        )
+        .unwrap();
 
         // Create environment and config
         let mut env = Environment::new();
         env.set_loader(path_loader(temp_dir.path()));
         add_to_environment(&mut env);
-        let config = create_test_config(
-            temp_dir.path().to_str().unwrap(),
-            "output"
-        );
+        let config = create_test_config(temp_dir.path().to_str().unwrap(), "output");
 
         // Test rendering
         let meta = create_test_meta();
@@ -171,7 +196,7 @@ mod tests {
     fn test_render_html_with_metadata_fields() {
         let temp_dir = TempDir::new().unwrap();
         let template_path = temp_dir.path().join("full.html");
-        
+
         std::fs::write(
             &template_path,
             r#"<article>
@@ -179,16 +204,14 @@ mod tests {
                 <p>By {{ meta.author }}</p>
                 <div>{{ content | safe }}</div>
                 <p>Tags: {{ meta.tags | join(", ") }}</p>
-            </article>"#
-        ).unwrap();
+            </article>"#,
+        )
+        .unwrap();
 
         let mut env = Environment::new();
         env.set_loader(path_loader(temp_dir.path()));
         add_to_environment(&mut env);
-        let config = create_test_config(
-            temp_dir.path().to_str().unwrap(),
-            "output"
-        );
+        let config = create_test_config(temp_dir.path().to_str().unwrap(), "output");
 
         let meta = create_test_meta();
         let result = render_html(&env, "<p>Body</p>", &meta, &config, "full.html");
@@ -205,19 +228,13 @@ mod tests {
         let temp_dir = TempDir::new().unwrap();
         let template_path = temp_dir.path().join("date.html");
 
-        std::fs::write(
-            &template_path,
-            "<p>{{ meta.date | datetimeformat }}</p>"
-        ).unwrap();
+        std::fs::write(&template_path, "<p>{{ meta.date | datetimeformat }}</p>").unwrap();
 
         let mut env = Environment::new();
         env.set_loader(path_loader(temp_dir.path()));
         add_to_environment(&mut env);
 
-        let config = create_test_config(
-            temp_dir.path().to_str().unwrap(),
-            "output"
-        );
+        let config = create_test_config(temp_dir.path().to_str().unwrap(), "output");
 
         let meta = create_test_meta();
         let result = render_html(&env, "<p>Body</p>", &meta, &config, "date.html");
@@ -229,13 +246,10 @@ mod tests {
     #[test]
     fn test_render_html_missing_template() {
         let temp_dir = TempDir::new().unwrap();
-        
+
         let mut env = Environment::new();
         env.set_loader(path_loader(temp_dir.path()));
-        let config = create_test_config(
-            temp_dir.path().to_str().unwrap(),
-            "output"
-        );
+        let config = create_test_config(temp_dir.path().to_str().unwrap(), "output");
 
         let meta = create_test_meta();
         let result = render_html(&env, "<p>Test</p>", &meta, &config, "nonexistent.html");
@@ -248,20 +262,18 @@ mod tests {
     fn test_render_index_from_loaded_empty_list() {
         let temp_dir = TempDir::new().unwrap();
         let template_path = temp_dir.path().join("index.html");
-        
+
         std::fs::write(
             &template_path,
-            "<h1>{{ config.site.title }}</h1><p>{{ contents | length }} items</p>"
-        ).unwrap();
+            "<h1>{{ config.site.title }}</h1><p>{{ contents | length }} items</p>",
+        )
+        .unwrap();
 
         let mut env = Environment::new();
         env.set_loader(path_loader(temp_dir.path()));
-        let config = create_test_config(
-            temp_dir.path().to_str().unwrap(),
-            "output"
-        );
+        let config = create_test_config(temp_dir.path().to_str().unwrap(), "output");
 
-        let result = render_index_from_loaded(&env, &config, "index.html", vec![]);
+        let result = render_index_from_loaded(&env, &config, "index.html", vec![], vec![]);
 
         assert!(result.is_ok());
         let rendered = result.unwrap();
@@ -273,7 +285,7 @@ mod tests {
     fn test_render_index_from_loaded_with_content() {
         let temp_dir = TempDir::new().unwrap();
         let template_path = temp_dir.path().join("index.html");
-        
+
         std::fs::write(
             &template_path,
             r#"<h1>{{ config.site.title }}</h1>
@@ -282,15 +294,13 @@ mod tests {
                 <h2>{{ item.meta.title }}</h2>
                 <p>{{ item.formatted_date }}</p>
             </article>
-            {% endfor %}"#
-        ).unwrap();
+            {% endfor %}"#,
+        )
+        .unwrap();
 
         let mut env = Environment::new();
         env.set_loader(path_loader(temp_dir.path()));
-        let config = create_test_config(
-            temp_dir.path().to_str().unwrap(),
-            "output"
-        );
+        let config = create_test_config(temp_dir.path().to_str().unwrap(), "output");
 
         // Create test LoadedContent
         let loaded = LoadedContent {
@@ -304,7 +314,8 @@ mod tests {
             output_path: PathBuf::from("output/blog/test.html"),
         };
 
-        let result = render_index_from_loaded(&env, &config, "index.html", vec![&loaded]);
+        let result =
+            render_index_from_loaded(&env, &config, "index.html", vec![&loaded], vec![&loaded]);
 
         assert!(result.is_ok());
         let rendered = result.unwrap();
@@ -317,18 +328,16 @@ mod tests {
     fn test_render_index_sorts_by_date_descending() {
         let temp_dir = TempDir::new().unwrap();
         let template_path = temp_dir.path().join("index.html");
-        
+
         std::fs::write(
             &template_path,
-            r#"{% for item in contents %}{{ item.meta.title }},{% endfor %}"#
-        ).unwrap();
+            r#"{% for item in contents %}{{ item.meta.title }},{% endfor %}"#,
+        )
+        .unwrap();
 
         let mut env = Environment::new();
         env.set_loader(path_loader(temp_dir.path()));
-        let config = create_test_config(
-            temp_dir.path().to_str().unwrap(),
-            "output"
-        );
+        let config = create_test_config(temp_dir.path().to_str().unwrap(), "output");
 
         // Create three LoadedContent items with different dates
         let mut meta_old = create_test_meta();
@@ -381,7 +390,8 @@ mod tests {
             &env,
             &config,
             "index.html",
-            vec![&loaded_old, &loaded_new, &loaded_mid]
+            vec![&loaded_old, &loaded_new, &loaded_mid],
+            vec![&loaded_old, &loaded_new, &loaded_mid],
         );
 
         assert!(result.is_ok());
@@ -394,18 +404,16 @@ mod tests {
     fn test_render_index_with_excerpt() {
         let temp_dir = TempDir::new().unwrap();
         let template_path = temp_dir.path().join("index.html");
-        
+
         std::fs::write(
             &template_path,
-            r#"{% for item in contents %}<div>{{ item.excerpt }}</div>{% endfor %}"#
-        ).unwrap();
+            r#"{% for item in contents %}<div>{{ item.excerpt }}</div>{% endfor %}"#,
+        )
+        .unwrap();
 
         let mut env = Environment::new();
         env.set_loader(path_loader(temp_dir.path()));
-        let config = create_test_config(
-            temp_dir.path().to_str().unwrap(),
-            "output"
-        );
+        let config = create_test_config(temp_dir.path().to_str().unwrap(), "output");
 
         let loaded = LoadedContent {
             path: PathBuf::from("test.md"),
@@ -418,10 +426,79 @@ mod tests {
             output_path: PathBuf::from("output/blog/test.html"),
         };
 
-        let result = render_index_from_loaded(&env, &config, "index.html", vec![&loaded]);
+        let result =
+            render_index_from_loaded(&env, &config, "index.html", vec![&loaded], vec![&loaded]);
 
         assert!(result.is_ok());
         let rendered = result.unwrap();
         assert!(rendered.contains("This is the excerpt"));
+    }
+
+    #[test]
+    fn test_render_index_with_all_content() {
+        let temp_dir = TempDir::new().unwrap();
+        let template_path = temp_dir.path().join("index.html");
+
+        std::fs::write(
+            &template_path,
+            r#"<h1>{{ config.site.title }}</h1>
+            <p>Filtered: {{ contents | length }} items</p>
+            <p>All: {{ all_content | length }} items</p>
+            {% for item in all_content %}
+            <span class="all-item">{{ item.meta.title }}</span>
+            {% endfor %}"#,
+        )
+        .unwrap();
+
+        let mut env = Environment::new();
+        env.set_loader(path_loader(temp_dir.path()));
+        let config = create_test_config(temp_dir.path().to_str().unwrap(), "output");
+
+        // Create two test LoadedContent items
+        let mut meta1 = create_test_meta();
+        meta1.title = "First Post".to_string();
+        meta1.date = DateTime::parse_from_rfc3339("2024-01-15T10:00:00-05:00").unwrap();
+
+        let mut meta2 = create_test_meta();
+        meta2.title = "Second Post".to_string();
+        meta2.date = DateTime::parse_from_rfc3339("2024-02-15T10:00:00-05:00").unwrap();
+
+        let loaded1 = LoadedContent {
+            path: PathBuf::from("first.md"),
+            content: crate::content::Content {
+                meta: meta1,
+                data: "# First".to_string(),
+            },
+            html: "<h1>First</h1>".to_string(),
+            content_type: "blog".to_string(),
+            output_path: PathBuf::from("output/blog/first.html"),
+        };
+
+        let loaded2 = LoadedContent {
+            path: PathBuf::from("second.md"),
+            content: crate::content::Content {
+                meta: meta2,
+                data: "# Second".to_string(),
+            },
+            html: "<h1>Second</h1>".to_string(),
+            content_type: "blog".to_string(),
+            output_path: PathBuf::from("output/blog/second.html"),
+        };
+
+        // Pass only first item in filtered list, but both in all_content
+        let result = render_index_from_loaded(
+            &env,
+            &config,
+            "index.html",
+            vec![&loaded1],
+            vec![&loaded1, &loaded2],
+        );
+
+        assert!(result.is_ok());
+        let rendered = result.unwrap();
+        assert!(rendered.contains("Filtered: 1 items"));
+        assert!(rendered.contains("All: 2 items"));
+        assert!(rendered.contains("First Post"));
+        assert!(rendered.contains("Second Post"));
     }
 }
