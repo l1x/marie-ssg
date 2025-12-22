@@ -81,6 +81,62 @@ content_template = "page.html"
 github_url = "https://github.com/you"
 ```
 
+## Syntax Highlighting
+
+Marie includes built-in syntax highlighting for code blocks using the [Autumnus](https://crates.io/crates/autumnus) library. To enable syntax highlighting, add these fields to your `[site]` configuration:
+
+```toml
+[site]
+# ... other fields ...
+syntax_highlighting_enabled = true
+syntax_highlighting_theme = "github_dark"
+```
+
+### Supported Languages
+
+Marie supports syntax highlighting for these languages:
+
+- Rust (`rust`)
+- Python (`python`, `py`)
+- JavaScript (`javascript`, `js`)
+- TypeScript (`typescript`, `ts`)
+- HTML (`html`)
+- CSS (`css`)
+- Bash (`bash`, `sh`, `shell`)
+- JSON (`json`)
+- TOML (`toml`)
+- YAML (`yaml`, `yml`)
+- Plain text (`plaintext`, `text`, `txt`)
+
+### Themes
+
+The default theme is `github_dark`. Autumnus supports many themes including:
+
+- `github_dark`, `github_light`
+- `monokai`
+- `solarized_dark`, `solarized_light`
+- `dracula`
+- And many more...
+
+### Usage in Markdown
+
+Use standard markdown code blocks with language identifiers:
+
+````markdown
+```rust
+fn main() {
+    println!("Hello, world!");
+}
+```
+
+```python
+def hello():
+    print("Hello, world!")
+```
+````
+
+The code blocks will be automatically highlighted in the generated HTML.
+
 ## Templates
 
 Marie uses [minijinja](https://github.com/mitsuhiko/minijinja) for templating. Templates receive the full config plus content-specific data.
@@ -206,6 +262,13 @@ marie-ssg v0.6.0 (/.../marie-ssg)
 ```
 
 ## Version History
+
+### v0.7.0 (2025-12-23)
+
+- Added syntax highlighting for code blocks using Autumnus
+- Supported languages: Rust, Python, JavaScript, TypeScript, HTML, CSS, Bash, JSON, TOML, YAML
+- Configurable themes with `github_dark` as default
+- Enable via `syntax_highlighting_enabled` and `syntax_highlighting_theme` in site config
 
 ### v0.6.0 (2025-12-22)
 

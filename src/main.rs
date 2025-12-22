@@ -6,7 +6,7 @@ use tracing::{debug, instrument};
 use tracing::{error, info};
 
 use crate::config::Config;
-use crate::content::{Content, convert_content, load_content};
+use crate::content::{Content, convert_content_with_highlighting, load_content};
 use crate::error::RunError;
 use crate::output::{copy_static_files, write_output_file};
 use crate::template::{
@@ -21,6 +21,7 @@ mod config;
 mod content;
 mod error;
 mod output;
+mod syntax;
 mod template;
 mod utils;
 
@@ -131,7 +132,12 @@ fn run_build(
 
             let content_type = get_content_type(file, &config.site.content_dir);
             let content = load_content(file)?;
-            let html = convert_content(&content, file.clone())?;
+            let html = convert_content_with_highlighting(
+                &content,
+                file.clone(),
+                config.site.syntax_highlighting_enabled,
+                &config.site.syntax_highlighting_theme,
+            )?;
 
             let mut output_path =
                 get_output_path(file, &config.site.content_dir, &config.site.output_dir);

@@ -2,9 +2,14 @@
 
 use chrono::{DateTime, FixedOffset};
 use serde::{Deserialize, Serialize};
-use std::{fs, path::{Path, PathBuf}};
+use std::{
+    fs,
+    path::{Path, PathBuf},
+};
 use thiserror::Error;
 use tracing::error;
+
+use crate::syntax::highlight_html;
 
 /// Represents a complete content piece with metadata and raw markdown data.
 ///
@@ -91,6 +96,14 @@ pub(crate) enum ContentError {
         /// Path to the markdown file that failed to parse
         path: PathBuf,
         /// Detailed error message from the markdown parser
+        message: String,
+    },
+    /// Syntax highlighting failure
+    #[error("Syntax highlighting failed for file {path:?}: {message}")]
+    SyntaxHighlighting {
+        /// Path to the file that caused the highlighting error
+        path: PathBuf,
+        /// Detailed error message from the syntax highlighter
         message: String,
     },
 }
@@ -217,6 +230,79 @@ pub(crate) fn convert_content(content: &Content, path: PathBuf) -> Result<String
     }
 }
 
+/// Convert markdown content to HTML with optional syntax highlighting.
+///
+/// This function works like `convert_content` but can apply syntax highlighting
+/// to code blocks if `highlighting_enabled` is true.
+///
+/// # Arguments
+/// * `content` - The markdown content with metadata
+/// * `path` - Path to the source file (for error reporting)
+/// * `highlighting_enabled` - Whether to apply syntax highlighting
+/// * `theme` - The theme to use for highlighting (if enabled)
+///
+/// # Returns
+/// `Result<String, ContentError>` where the string is HTML content.
+///
+/// # Errors
+/// Returns `ContentError::MarkdownParsingFailed` if markdown conversion fails,
+/// or `ContentError::SyntaxHighlighting` if highlighting fails.
+///
+/// # Examples
+/// ```
+/// # use std::path::PathBuf;
+/// # use crate::content::{Content, ContentMeta, convert_content_with_highlighting};
+/// # use chrono::Utc;
+/// #
+/// # let content = Content {
+/// #     meta: ContentMeta {
+/// #         title: "Test".to_string(),
+/// #         date: Utc::now(),
+/// #         author: "Author".to_string(),
+/// #         tags: vec![],
+/// #         template: None,
+/// #     },
+/// #     data: "# Hello World\n\n```rust\nfn main() {}\n```".to_string(),
+/// # };
+/// let html = convert_content_with_highlighting(&content, PathBuf::from("test.md"), true, "github_dark");
+/// assert!(html.contains("<h1>Hello World</h1>"));
+/// ```
+pub(crate) fn convert_content_with_highlighting(
+    content: &Content,
+    path: PathBuf,
+    highlighting_enabled: bool,
+    theme: &str,
+) -> Result<String, ContentError> {
+    // Convert markdown to HTML using Comrak.
+    let html = match markdown::to_html_with_options(&content.data, &markdown::Options::gfm()) {
+        Ok(html) => html,
+        Err(e) => {
+            error!("Markdown parsing failed: {}", e);
+            return Err(ContentError::MarkdownParsingFailed {
+                path,
+                message: e.to_string(),
+            });
+        }
+    };
+
+    // Apply syntax highlighting if enabled
+    if highlighting_enabled {
+        match highlight_html(&html, theme) {
+            Ok(highlighted) => Ok(highlighted),
+            Err(e) => {
+                error!("Syntax highlighting failed: {}", e);
+                // We could fall back to unhighlighted HTML, but for now we'll error
+                Err(ContentError::SyntaxHighlighting {
+                    path,
+                    message: e.to_string(),
+                })
+            }
+        }
+    } else {
+        Ok(html)
+    }
+}
+
 /// Extracts an HTML excerpt from markdown content using a specified pattern.
 ///
 /// This function searches for a specific pattern (typically "## Context") in
@@ -278,8 +364,6 @@ pub(crate) fn get_excerpt_html(markdown: &str, summary_pattern: &str) -> String 
         String::new() // Return empty string if no summary found
     }
 }
-
-// src/content.rs
 
 #[cfg(test)]
 mod tests {

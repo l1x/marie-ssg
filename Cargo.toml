@@ -1,10 +1,22 @@
 [package]
 name = "marie-ssg"
-version = "0.6.0"
+version = "0.7.0"
 edition = "2024"
 
 [dependencies]
 argh = { version = "0" }
+autumnus = { version = "0.7", default-features = false, features = [
+  "lang-bash",
+  "lang-css",
+  "lang-html",
+  "lang-javascript",
+  "lang-json",
+  "lang-python",
+  "lang-rust",
+  "lang-toml",
+  "lang-typescript",
+  "lang-yaml"
+] }
 basic-toml = { version = "0" }
 chrono = { version = "0", features = ["serde"] }
 markdown = { version = "1" }

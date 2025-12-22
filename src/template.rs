@@ -144,6 +144,8 @@ mod tests {
                 template_dir: template_dir.to_string(),
                 static_dir: "static".to_string(),
                 site_index_template: "index.html".to_string(),
+                syntax_highlighting_enabled: true,
+                syntax_highlighting_theme: crate::syntax::DEFAULT_THEME.to_string(),
                 root_static: HashMap::new(),
             },
             content: HashMap::new(),

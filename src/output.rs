@@ -151,10 +151,7 @@ fn copy_root_static_files(config: &Config) -> Result<(), StaticError> {
 
         // Skip if file hasn't changed
         if !should_copy_file(&source_path, &dest_path) {
-            debug!(
-                "Skipping unchanged root static file: {:?}",
-                source_path
-            );
+            debug!("Skipping unchanged root static file: {:?}", source_path);
             continue;
         }
 
@@ -223,6 +220,8 @@ mod tests {
                 template_dir: "templates".to_string(),
                 static_dir: "static".to_string(),
                 site_index_template: "site_index.html".to_string(),
+                syntax_highlighting_enabled: true,
+                syntax_highlighting_theme: crate::syntax::DEFAULT_THEME.to_string(),
                 root_static,
             },
             content: HashMap::new(),
@@ -345,10 +344,7 @@ mod tests {
             .unwrap()
             .write_all(b"new content")
             .unwrap();
-        File::create(&dest)
-            .unwrap()
-            .write_all(b"old")
-            .unwrap();
+        File::create(&dest).unwrap().write_all(b"old").unwrap();
 
         // Different sizes - should copy
         assert!(should_copy_file(&source, &dest));

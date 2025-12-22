@@ -277,6 +277,8 @@ mod tests {
                 template_dir: "templates".to_string(),
                 static_dir: "static".to_string(),
                 site_index_template: "site_index.html".to_string(),
+                syntax_highlighting_enabled: true,
+                syntax_highlighting_theme: crate::syntax::DEFAULT_THEME.to_string(),
                 root_static: HashMap::new(),
             },
             content: content_types,

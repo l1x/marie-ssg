@@ -8,6 +8,13 @@ content_dir = "content"
 template_dir = "templates"
 static_dir = "static"
 site_index_template = "site_index.html"
+syntax_highlighting_enabled = true
+syntax_highlighting_theme = "github_dark"
+
+[site.root_static]
+"favicon.ico" = "favicon.ico"
+"robots.txt" = "robots.txt"
+"style.css" = "style.css"
 
 [content.blog]
 index_template = "blog_index.html"
@@ -17,11 +24,6 @@ output_naming = "date"
 [content.pages]
 index_template = "page_index.html"
 content_template = "page.html"
-
-[site.root_static]
-"favicon.ico" = "favicon.ico"
-"robots.txt" = "robots.txt"
-"style.css" = "style.css"
 
 [dynamic]
 github_url = "https://github.com/janedoe"
