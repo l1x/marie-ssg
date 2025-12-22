@@ -96,17 +96,7 @@ syntax_highlighting_theme = "github_dark"
 
 Marie supports syntax highlighting for these languages:
 
-- Rust (`rust`)
-- Python (`python`, `py`)
-- JavaScript (`javascript`, `js`)
-- TypeScript (`typescript`, `ts`)
-- HTML (`html`)
-- CSS (`css`)
-- Bash (`bash`, `sh`, `shell`)
-- JSON (`json`)
-- TOML (`toml`)
-- YAML (`yaml`, `yml`)
-- Plain text (`plaintext`, `text`, `txt`)
+https://github.com/leandrocp/autumnus?tab=readme-ov-file#selective-language-support
 
 ### Themes
 
