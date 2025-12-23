@@ -1,6 +1,6 @@
 // src/template.rs
 
-use minijinja::{Environment, context, path_loader};
+use minijinja::{Environment, Value, context, path_loader};
 use minijinja_contrib::add_to_environment;
 use std::sync::OnceLock;
 
@@ -8,6 +8,17 @@ use crate::{
     config::Config,
     content::{ContentItem, ContentMeta, get_excerpt_html},
 };
+
+/// Filter to mark URL paths as safe for HTML rendering.
+///
+/// Minijinja's default HTML escaping converts forward slashes to `&#x2f;`
+/// which breaks URL paths in href attributes. This filter marks the value
+/// as safe, bypassing auto-escaping for URL paths.
+///
+/// Usage in templates: `{{ item.filename | url }}`
+fn url_filter(value: &str) -> Value {
+    Value::from_safe_string(value.to_string())
+}
 
 static ENV: OnceLock<Environment<'static>> = OnceLock::new();
 
@@ -17,6 +28,7 @@ pub(crate) fn init_environment(template_dir: &str) -> &'static Environment<'stat
         let mut env = Environment::new();
         env.set_loader(path_loader(template_dir));
         add_to_environment(&mut env);
+        env.add_filter("url", url_filter);
         env
     })
 }
@@ -26,6 +38,7 @@ pub(crate) fn create_environment(template_dir: &str) -> Environment<'static> {
     let mut env = Environment::new();
     env.set_loader(path_loader(template_dir));
     add_to_environment(&mut env);
+    env.add_filter("url", url_filter);
     env
 }
 
@@ -434,6 +447,100 @@ mod tests {
         assert!(result.is_ok());
         let rendered = result.unwrap();
         assert!(rendered.contains("This is the excerpt"));
+    }
+
+    #[test]
+    fn test_render_index_filename_not_escaped_with_url_filter() {
+        // Test that the `url` filter prevents forward slash escaping in URL paths.
+        // Without the filter, minijinja escapes "/" to "&#x2f;" in href attributes.
+        let temp_dir = TempDir::new().unwrap();
+        let template_path = temp_dir.path().join("index.html");
+
+        // Template with href using filename with the `url` filter
+        std::fs::write(
+            &template_path,
+            r#"{% for item in contents %}<a href="/{{ item.filename | url }}">{{ item.meta.title }}</a>{% endfor %}"#,
+        )
+        .unwrap();
+
+        let mut env = Environment::new();
+        env.set_loader(path_loader(temp_dir.path()));
+        add_to_environment(&mut env);
+        env.add_filter("url", url_filter);
+        let config = create_test_config(temp_dir.path().to_str().unwrap(), "output");
+
+        let loaded = LoadedContent {
+            path: PathBuf::from("test.md"),
+            content: crate::content::Content {
+                meta: create_test_meta(),
+                data: "# Test".to_string(),
+            },
+            html: "<h1>Test</h1>".to_string(),
+            content_type: "articles".to_string(),
+            output_path: PathBuf::from("output/articles/2024-01-15-test.html"),
+        };
+
+        let result =
+            render_index_from_loaded(&env, &config, "index.html", vec![&loaded], vec![&loaded]);
+
+        assert!(result.is_ok());
+        let rendered = result.unwrap();
+
+        // With the url filter, forward slash MUST NOT be escaped to &#x2f;
+        assert!(
+            rendered.contains("href=\"/articles/2024-01-15-test.html\""),
+            "Forward slash was incorrectly escaped. Got: {}",
+            rendered
+        );
+        assert!(
+            !rendered.contains("&#x2f;"),
+            "Found escaped forward slash (&#x2f;) in output: {}",
+            rendered
+        );
+    }
+
+    #[test]
+    fn test_render_index_filename_escaped_without_url_filter() {
+        // Test demonstrating the default escaping behavior without the url filter.
+        // This documents the issue that the url filter fixes.
+        let temp_dir = TempDir::new().unwrap();
+        let template_path = temp_dir.path().join("index.html");
+
+        // Template WITHOUT the url filter
+        std::fs::write(
+            &template_path,
+            r#"{% for item in contents %}<a href="/{{ item.filename }}">link</a>{% endfor %}"#,
+        )
+        .unwrap();
+
+        let mut env = Environment::new();
+        env.set_loader(path_loader(temp_dir.path()));
+        add_to_environment(&mut env);
+        let config = create_test_config(temp_dir.path().to_str().unwrap(), "output");
+
+        let loaded = LoadedContent {
+            path: PathBuf::from("test.md"),
+            content: crate::content::Content {
+                meta: create_test_meta(),
+                data: "# Test".to_string(),
+            },
+            html: "<h1>Test</h1>".to_string(),
+            content_type: "articles".to_string(),
+            output_path: PathBuf::from("output/articles/test.html"),
+        };
+
+        let result =
+            render_index_from_loaded(&env, &config, "index.html", vec![&loaded], vec![&loaded]);
+
+        assert!(result.is_ok());
+        let rendered = result.unwrap();
+
+        // Without the url filter, minijinja escapes the forward slash
+        assert!(
+            rendered.contains("&#x2f;"),
+            "Expected escaped forward slash without url filter. Got: {}",
+            rendered
+        );
     }
 
     #[test]

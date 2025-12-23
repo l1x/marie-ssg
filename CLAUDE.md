@@ -119,6 +119,9 @@ Template variables available:
 - `{{ config.site.* }}` - site configuration
 - `{{ config.dynamic.* }}` - custom variables
 
+Custom filters:
+- `{{ item.filename | url }}` - marks URL paths as safe (prevents forward slash escaping)
+
 ### Adding a New Template Variable
 
 To add custom variables accessible in all templates:
