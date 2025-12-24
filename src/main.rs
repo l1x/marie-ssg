@@ -21,6 +21,7 @@ mod config;
 mod content;
 mod error;
 mod output;
+mod sitemap;
 mod syntax;
 mod template;
 mod utils;
@@ -226,6 +227,15 @@ fn run_build(
         &PathBuf::from(&config.site.output_dir).join("index.html"),
         &site_index_rendered,
     )?;
+
+    // 6. Generate sitemap.xml
+    //
+    let sitemap_xml = sitemap::generate_sitemap(config, &loaded_contents);
+    write_output_file(
+        &PathBuf::from(&config.site.output_dir).join("sitemap.xml"),
+        &sitemap_xml,
+    )?;
+    info!("Generated sitemap.xml");
 
     info!("Process completed successfully.");
     Ok(())

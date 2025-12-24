@@ -424,3 +424,68 @@ fn test_html_structure_valid() {
         "Title should contain tagline"
     );
 }
+
+#[test]
+fn test_sitemap_generated() {
+    let temp_site = setup_test_site();
+    let output_dir = temp_site.path().join("output");
+
+    run_ssg(temp_site.path()).success();
+
+    // Check sitemap.xml exists
+    let sitemap_path = output_dir.join("sitemap.xml");
+    assert!(sitemap_path.exists(), "sitemap.xml should be generated");
+
+    // Read and validate sitemap content
+    let sitemap_content = fs::read_to_string(&sitemap_path).unwrap();
+
+    // Check XML declaration and structure
+    assert!(
+        sitemap_content.contains(r#"<?xml version="1.0" encoding="UTF-8"?>"#),
+        "Should have XML declaration"
+    );
+    assert!(
+        sitemap_content.contains(r#"<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">"#),
+        "Should have urlset with sitemap namespace"
+    );
+    assert!(
+        sitemap_content.contains("</urlset>"),
+        "Should have closing urlset tag"
+    );
+
+    // Check homepage URL
+    assert!(
+        sitemap_content.contains("<loc>https://test.example.com/</loc>"),
+        "Should include homepage URL"
+    );
+
+    // Check content type index pages
+    assert!(
+        sitemap_content.contains("<loc>https://test.example.com/blog/</loc>"),
+        "Should include blog index URL"
+    );
+    assert!(
+        sitemap_content.contains("<loc>https://test.example.com/pages/</loc>"),
+        "Should include pages index URL"
+    );
+
+    // Check individual content pages exist
+    assert!(
+        sitemap_content.contains("blog/") && sitemap_content.contains(".html"),
+        "Should include blog post URLs"
+    );
+    assert!(
+        sitemap_content.contains("<loc>https://test.example.com/pages/about.html</loc>"),
+        "Should include about page URL"
+    );
+
+    // Check lastmod dates are present
+    assert!(
+        sitemap_content.contains("<lastmod>"),
+        "Should include lastmod dates"
+    );
+    assert!(
+        sitemap_content.contains("2024-01-15") || sitemap_content.contains("2024-02-20"),
+        "Should have content dates"
+    );
+}
