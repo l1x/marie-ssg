@@ -11,12 +11,11 @@
    - Output: `tasks/prd-[kebab-case-feature-name]-[YYYY-MM-DD].md`
 
 1. **Task Generation** (`generate-tasks.md`)
-   - Take the PRD and break it into granular, actionable tasks with sub-tasks
+   - Take the PRD and break it into granular, actionable tasks
    - Use 'bd' for task tracking (tool: bd prime)
      - Beads supports hierarchical IDs for epics:
        - bd-a3f8 (Epic)
        - bd-a3f8.1 (Task)
-       - bd-a3f8.1.1 (Sub-task)
    - Creates a implementation roadmap (bd-a3f8, bd-a3f8.1, etc.)
    - Output: tickets in beads (tool: bd prime)
 

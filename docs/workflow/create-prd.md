@@ -46,7 +46,7 @@ Generate a PRD in Markdown format from a user prompt. The PRD must be specific e
 ## Output
 
 - **Format:** Markdown
-- **File Naming Convention:** `tasks/prd-[kebab-case-feature-name]-[YYYY-MM-DD].md`
+- **File Naming Convention:** `prds/prd-[kebab-case-feature-name]-[YYYY-MM-DD].md`
 
 ## Constraints
 
