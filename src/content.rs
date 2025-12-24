@@ -759,21 +759,54 @@ Main content.
     }
 
     #[test]
-    fn test_get_excerpt_html_stops_at_different_headings() {
+    fn test_load_content_read_error() {
+        let temp_dir = tempdir().unwrap();
+        let md_path = temp_dir.path().join("test.md");
+        let meta_path = temp_dir.path().join("test.meta.toml");
+
+        // Create metadata file
+        let meta_content = r#"
+    title = "Test Post"
+    date = "2023-12-15T10:30:00+05:00"
+    author = "Test Author"
+    tags = []
+    "#;
+        File::create(&meta_path)
+            .unwrap()
+            .write_all(meta_content.as_bytes())
+            .unwrap();
+        
+        // Ensure markdown file does NOT exist
+        if md_path.exists() {
+            std::fs::remove_file(&md_path).unwrap();
+        }
+
+        let result = load_content(&md_path);
+        assert!(result.is_err());
+        
+        if let Err(ContentError::Io { path, source: _ }) = result {
+            assert_eq!(path, md_path);
+        } else {
+            panic!("Expected Io error for content file");
+        }
+    }
+
+    #[test]
+    fn test_get_excerpt_html_no_end_heading() {
         let markdown = r#"
 ## Summary
-Excerpt content.
-
-## Another Heading
-Not included.
-
-### Subheading
-Also not included.
+This is the excerpt.
+This continues until the end of the string.
 "#;
-
         let excerpt = get_excerpt_html(markdown, "## Summary");
-        assert!(excerpt.contains("Excerpt content"));
-        assert!(!excerpt.contains("Another Heading"));
-        assert!(!excerpt.contains("Subheading"));
+        assert!(excerpt.contains("This is the excerpt"));
+        assert!(excerpt.contains("end of the string"));
+    }
+
+    #[test]
+    fn test_get_excerpt_html_exact_match_end() {
+        let markdown = "## Summary";
+        let excerpt = get_excerpt_html(markdown, "## Summary");
+        assert_eq!(excerpt, "");
     }
 }

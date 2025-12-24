@@ -1,3 +1,5 @@
+<!--file:generate-tasks.md-->
+
 # Generate Tasks
 
 ## Objective
@@ -10,10 +12,14 @@ Decompose a PRD into granular, actionable tickets with hierarchical structure su
 
 ## Process
 
-1. **Parse PRD** — Extract functional requirements, non-functional requirements, and acceptance criteria.
-1. **Identify Epic** — Create one epic per PRD representing the full feature scope.
-1. **Decompose into Tasks** — Break each requirement into atomic units of work (completable in one PR) that must have verifiable completion criteria derived from the PRD.
-1. **Create Tickets** — Output tickets using `bd prime`.
+1. **Parse PRD**: Extract functional requirements, non-functional requirements, and acceptance criteria.
+1. **Identify Epic**: Create one epic per PRD representing the full feature scope.
+1. **Decompose into Tasks**
+
+- Execute `bd prime` for ticket handling
+- Break each requirement into atomic units of work (completable in one PR) that must have verifiable completion criteria derived from the PRD.
+
+1. **Create Tickets**: Output tickets using `bd create`.
 
 ## Ticket Hierarchy
 
