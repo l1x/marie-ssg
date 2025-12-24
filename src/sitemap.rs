@@ -118,6 +118,7 @@ mod tests {
                 syntax_highlighting_enabled: true,
                 syntax_highlighting_theme: "github_dark".to_string(),
                 root_static: HashMap::new(),
+                sitemap_enabled: true,
             },
             content,
             dynamic: HashMap::new(),

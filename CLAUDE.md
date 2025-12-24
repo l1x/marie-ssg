@@ -77,6 +77,7 @@ output_dir = "output"
 site_index_template = "site_index.html"
 syntax_highlighting_enabled = true          # Optional, defaults to true
 syntax_highlighting_theme = "github_dark"   # Optional, defaults to "github_dark"
+sitemap_enabled = true                      # Optional, defaults to true
 
 [site.root_static]
 "favicon.ico" = "favicon.ico"

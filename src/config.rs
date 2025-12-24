@@ -61,6 +61,9 @@ pub(crate) struct SiteConfig {
     /// Static files that should be copied to the output root (e.g., favicon.ico, robots.txt)
     #[serde(default)]
     pub root_static: HashMap<String, String>,
+    /// Enable sitemap.xml generation
+    #[serde(default = "default_true")]
+    pub sitemap_enabled: bool,
 }
 
 fn default_true() -> bool {
@@ -257,6 +260,41 @@ site_index_template = "index.html"
         assert_eq!(
             config.site.root_static.get("robots.txt").unwrap(),
             "seo/robots.txt"
+        );
+    }
+
+    #[test]
+    fn test_config_sitemap_enabled_default() {
+        let config = Config::from_str(minimal_config_toml()).unwrap();
+
+        // sitemap_enabled should default to true
+        assert!(
+            config.site.sitemap_enabled,
+            "sitemap_enabled should default to true"
+        );
+    }
+
+    #[test]
+    fn test_config_sitemap_disabled() {
+        let toml = r#"
+[site]
+title = "Test Site"
+tagline = "A test tagline"
+domain = "example.com"
+author = "Test Author"
+output_dir = "output"
+content_dir = "content"
+template_dir = "templates"
+static_dir = "static"
+site_index_template = "index.html"
+sitemap_enabled = false
+"#;
+
+        let config = Config::from_str(toml).unwrap();
+
+        assert!(
+            !config.site.sitemap_enabled,
+            "sitemap_enabled should be false when explicitly set"
         );
     }
 }

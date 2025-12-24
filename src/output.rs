@@ -223,6 +223,7 @@ mod tests {
                 syntax_highlighting_enabled: true,
                 syntax_highlighting_theme: crate::syntax::DEFAULT_THEME.to_string(),
                 root_static,
+                sitemap_enabled: true,
             },
             content: HashMap::new(),
             dynamic: HashMap::new(),

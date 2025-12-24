@@ -228,14 +228,16 @@ fn run_build(
         &site_index_rendered,
     )?;
 
-    // 6. Generate sitemap.xml
+    // 6. Generate sitemap.xml (if enabled)
     //
-    let sitemap_xml = sitemap::generate_sitemap(config, &loaded_contents);
-    write_output_file(
-        &PathBuf::from(&config.site.output_dir).join("sitemap.xml"),
-        &sitemap_xml,
-    )?;
-    info!("Generated sitemap.xml");
+    if config.site.sitemap_enabled {
+        let sitemap_xml = sitemap::generate_sitemap(config, &loaded_contents);
+        write_output_file(
+            &PathBuf::from(&config.site.output_dir).join("sitemap.xml"),
+            &sitemap_xml,
+        )?;
+        info!("Generated sitemap.xml");
+    }
 
     info!("Process completed successfully.");
     Ok(())
