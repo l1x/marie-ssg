@@ -95,3 +95,4 @@ lost_and_found/
 .beads/marie-ssg.db-wal
 .beads/metadata.json
 
+.aider*

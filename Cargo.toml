@@ -3,6 +3,14 @@ name = "marie-ssg"
 version = "0.8.0"
 edition = "2024"
 
+[[bench]]
+harness = false
+name = "simple_html_benchmark"
+
+[[bench]]
+harness = false
+name = "unescape_html_benchmark"
+
 [dependencies]
 argh = { version = "0" }
 autumnus = { version = "0.7" }
@@ -21,6 +29,7 @@ walkdir = { version = "2" }
 [dev-dependencies]
 assert_cmd = { version = "2" }
 criterion = { version = "0", features = ["html_reports"] }
+html-escape = "0.2"
 predicates = { version = "3" }
 scraper = { version = "0" }
 tempfile = { version = "3" }
@@ -30,7 +39,7 @@ fsevent = { version = "2" }
 
 [profile.bench]
 lto = "thin"
-codegen-units = 16
+codegen-units = 8
 
 [profile.dev]
 lto = "thin"

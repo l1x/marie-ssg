@@ -87,14 +87,75 @@ fn extract_language_from_class(class: &str) -> Option<&str> {
 /// The markdown parser escapes special characters in code blocks
 /// (e.g., `<` becomes `&lt;`). We need to unescape them before
 /// passing to the syntax highlighter.
-fn unescape_html_entities(s: &str) -> String {
-    s.replace("&lt;", "<")
-        .replace("&gt;", ">")
-        .replace("&amp;", "&")
-        .replace("&quot;", "\"")
-        .replace("&#39;", "'")
-        .replace("&apos;", "'")
+///
+fn unescape_html_entities(input: &str) -> String {
+    let mut out = String::with_capacity(input.len());
+    let bytes = input.as_bytes();
+    let mut i = 0;
+    while i < bytes.len() {
+        if bytes[i] != b'&' {
+            out.push(bytes[i] as char);
+            i += 1;
+            continue;
+        }
+        // Find endpoint of the entity
+        if i + 1 >= bytes.len() {
+            out.push('&');
+            i += 1;
+            continue;
+        }
+        let mut end = i + 1;
+        while end < bytes.len() && bytes[end] != b';' {
+            end += 1;
+        }
+        if end == bytes.len() {
+            out.push('&');
+            i += 1;
+            continue;
+        }
+
+        // "entity" is the string between '&' and ';' (e.g. "lt" or "#39")
+        let entity = &input[i + 1..end];
+
+        let decoded = match entity {
+            "lt" => Some('<'),
+            "gt" => Some('>'),
+            "amp" => Some('&'),
+            "quot" => Some('"'),
+            "apos" => Some('\''),
+
+            // ✅ NEW: Handle Decimal Entities (e.g., &#39;)
+            s if s.starts_with('#') && !s.starts_with("#x") => {
+                s[1..].parse::<u32>().ok().and_then(char::from_u32)
+            }
+
+            s if s.starts_with("#x") => u32::from_str_radix(&s[2..], 16)
+                .ok()
+                .and_then(char::from_u32),
+
+            _ => None,
+        };
+
+        match decoded {
+            Some(ch) => out.push(ch),
+            None => {
+                // Unknown entity → copy verbatim including '&' and ';'
+                out.push_str(&input[i..=end]);
+            }
+        }
+        i = end + 1;
+    }
+    out
 }
+
+// fn unescape_html_entities(s: &str) -> String {
+//     s.replace("&lt;", "<")
+//         .replace("&gt;", ">")
+//         .replace("&amp;", "&")
+//         .replace("&quot;", "\"")
+//         .replace("&#39;", "'")
+//         .replace("&apos;", "'")
+// }
 
 /// Highlights all code blocks in HTML content
 pub(crate) fn highlight_html(html: &str, theme_name: &str) -> Result<String, SyntaxError> {
@@ -384,7 +445,10 @@ mod tests {
         assert_eq!(unescape_html_entities("&quot;hello&quot;"), "\"hello\"");
         assert_eq!(unescape_html_entities("&#39;x&#39;"), "'x'");
         assert_eq!(unescape_html_entities("&apos;y&apos;"), "'y'");
-        assert_eq!(unescape_html_entities("no entities here"), "no entities here");
+        assert_eq!(
+            unescape_html_entities("no entities here"),
+            "no entities here"
+        );
         assert_eq!(
             unescape_html_entities("&lt;a href=&quot;#&quot;&gt;link&lt;/a&gt;"),
             "<a href=\"#\">link</a>"
