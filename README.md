@@ -233,8 +233,9 @@ src/
 
 ```
 -> cargo tree --depth 1
-marie-ssg v0.6.0 (/.../marie-ssg)
+marie-ssg v0.8.1 (/.../marie-ssg)
 ├── argh v0.1.13
+├── autumnus v0.7.8
 ├── basic-toml v0.1.10
 ├── chrono v0.4.41
 ├── fsevent v2.3.0
@@ -250,12 +251,28 @@ marie-ssg v0.6.0 (/.../marie-ssg)
 [dev-dependencies]
 ├── assert_cmd v2.1.1
 ├── criterion v0.5.1
+├── html-escape v0.2.13
 ├── predicates v3.1.3
 ├── scraper v0.25.0
 └── tempfile v3.21.0
 ```
 
 ## Version History
+
+### v0.8.1 (2025-12-24)
+
+- Added `sitemap_enabled` configuration option
+- Added retroactive PRDs and workflow documentation
+- Added comprehensive `examples/site.toml`
+- Added performance benchmarks for HTML unescaping
+
+### v0.8.0 (2025-12-24)
+
+- Added automatic `sitemap.xml` generation
+
+### v0.7.1 (2025-12-24)
+
+- Added `url` filter to prevent forward slash escaping in templates
 
 ### v0.7.0 (2025-12-23)
 
