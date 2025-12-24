@@ -1,0 +1,69 @@
+# Marie SSG Configuration Example
+# This file demonstrates all available configuration options.
+
+[site]
+# Basic metadata
+title = "My Awesome Site"
+tagline = "Built with Marie SSG"
+domain = "example.com"
+author = "Jane Doe"
+
+# Directory configuration
+# where to find markdown content
+content_dir = "content"
+# where to find HTML templates
+template_dir = "templates"
+# where to find static assets (css, js, images)
+static_dir = "static"
+# where to write the generated site
+output_dir = "dist"
+
+# Templating
+# The template used for the homepage (/)
+site_index_template = "index.html"
+
+# Features
+# Enable syntax highlighting for code blocks in markdown
+syntax_highlighting_enabled = true
+# Choose a theme (default: "base16-ocean.dark")
+# Available themes depend on the implementation, common ones often include:
+# "base16-ocean.dark", "base16-mocha.dark", "base16-eighties.dark", "github", etc.
+syntax_highlighting_theme = "base16-ocean.dark"
+
+# Generate sitemap.xml at the root of the output directory
+sitemap_enabled = true
+
+# Root Static Files
+# Map filenames at the root of the site to their source paths in the static directory
+# format: "filename-in-root" = "path/relative/to/static/dir"
+[site.root_static]
+"favicon.ico" = "favicon.ico"
+"robots.txt" = "robots.txt"
+
+# Content Types
+# Define different types of content (e.g., blog posts, pages, projects)
+# The key (e.g., [content.blog]) corresponds to the subdirectory in 'content_dir'
+
+[content.blog]
+# Template for the index page of this content type (e.g., /blog/index.html)
+index_template = "blog_index.html"
+# Template for individual items (e.g., /blog/my-post.html)
+content_template = "post.html"
+# Output naming strategy: "default" (filename) or "date" (YYYY-MM-DD-filename)
+output_naming = "date"
+
+[content.pages]
+index_template = "page_index.html"
+content_template = "page.html"
+# Default output naming is just the filename
+
+[content.projects]
+index_template = "projects_index.html"
+content_template = "project.html"
+
+# Dynamic Variables
+# Arbitrary key-value pairs available in all templates under the `site.dynamic` namespace
+[dynamic]
+github_url = "https://github.com/janedoe"
+twitter_handle = "@janedoe"
+deployment_env = "production"
