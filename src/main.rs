@@ -4,6 +4,8 @@ use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
 use std::path::PathBuf;
 use tracing::{debug, instrument};
 use tracing::{error, info};
+use tracing_subscriber::layer::SubscriberExt;
+use tracing_subscriber::util::SubscriberInitExt;
 
 use crate::config::Config;
 use crate::content::{Content, convert_content_with_highlighting, load_content};
@@ -307,8 +309,18 @@ fn watch(_config_file: &str) -> Result<(), RunError> {
 }
 
 fn main() {
-    // Initialize tracing subscriber for logging
-    tracing_subscriber::fmt::init();
+    // Initialize tracing subscriber with env filter and UTC timestamps
+    tracing_subscriber::registry()
+        .with(
+            tracing_subscriber::EnvFilter::try_from_default_env()
+                .unwrap_or_else(|_| "marie_ssg=info".into()),
+        )
+        .with(
+            tracing_subscriber::fmt::layer().with_timer(
+                tracing_subscriber::fmt::time::UtcTime::new(kiters::timestamp::get_utc_formatter()),
+            ),
+        )
+        .init();
 
     // Parse CLI arguments
     let argz: Argz = argh::from_env();

@@ -1,7 +1,7 @@
 // src/utils.rs
 
-use chrono::{DateTime, FixedOffset};
 use std::path::{Path, PathBuf};
+use time::OffsetDateTime;
 use walkdir::WalkDir;
 
 use crate::config::Config;
@@ -105,9 +105,10 @@ pub(crate) fn find_markdown_files(content_dir: &str) -> Vec<PathBuf> {
 ///
 /// # Returns
 /// A new PathBuf with the date prefix (e.g., "out/posts/2023-05-15-my-post.html")
-pub(crate) fn add_date_prefix(output_path: PathBuf, date: &DateTime<FixedOffset>) -> PathBuf {
+pub(crate) fn add_date_prefix(output_path: PathBuf, date: &OffsetDateTime) -> PathBuf {
     // Format the date as YYYY-MM-DD
-    let date_str = date.format("%Y-%m-%d").to_string();
+    let format = time::format_description::parse("[year]-[month]-[day]").expect("valid format");
+    let date_str = date.format(&format).expect("valid date");
 
     // Get the parent directory and file name separately
     let parent_dir = output_path.parent().unwrap_or_else(|| Path::new(""));
@@ -436,12 +437,9 @@ mod tests {
 
     #[test]
     fn test_add_date_prefix() {
-        use chrono::TimeZone;
+        use time::macros::datetime;
 
-        let date = FixedOffset::east_opt(0)
-            .unwrap()
-            .with_ymd_and_hms(2023, 5, 15, 0, 0, 0)
-            .unwrap();
+        let date = datetime!(2023-05-15 0:00:00 UTC);
 
         let input = PathBuf::from("out/posts/my-post.html");
         let result = add_date_prefix(input, &date);
@@ -451,12 +449,9 @@ mod tests {
 
     #[test]
     fn test_add_date_prefix_nested_path() {
-        use chrono::TimeZone;
+        use time::macros::datetime;
 
-        let date = FixedOffset::east_opt(0)
-            .unwrap()
-            .with_ymd_and_hms(2024, 12, 31, 0, 0, 0)
-            .unwrap();
+        let date = datetime!(2024-12-31 0:00:00 UTC);
 
         let input = PathBuf::from("dist/blog/tech/rust/article.html");
         let result = add_date_prefix(input, &date);
@@ -469,12 +464,9 @@ mod tests {
 
     #[test]
     fn test_add_date_prefix_root_file() {
-        use chrono::TimeZone;
+        use time::macros::datetime;
 
-        let date = FixedOffset::east_opt(0)
-            .unwrap()
-            .with_ymd_and_hms(2023, 1, 1, 0, 0, 0)
-            .unwrap();
+        let date = datetime!(2023-01-01 0:00:00 UTC);
 
         let input = PathBuf::from("output.html");
         let result = add_date_prefix(input, &date);

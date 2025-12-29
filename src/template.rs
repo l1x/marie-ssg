@@ -3,11 +3,19 @@
 use minijinja::{Environment, Value, context, path_loader};
 use minijinja_contrib::add_to_environment;
 use std::sync::OnceLock;
+use time::OffsetDateTime;
 
 use crate::{
     config::Config,
     content::{ContentItem, ContentMeta, get_excerpt_html},
 };
+
+/// Format a date as "Month Day, Year" (e.g., "January 15, 2024")
+fn format_date_long(date: &OffsetDateTime) -> String {
+    let format = time::format_description::parse("[month repr:long] [day], [year]")
+        .expect("valid format");
+    date.format(&format).expect("valid date")
+}
 
 /// Filter to mark URL paths as safe for HTML rendering.
 ///
@@ -66,7 +74,7 @@ pub(crate) fn render_index_from_loaded(
             ContentItem {
                 html: lc.html.clone(),
                 meta: lc.content.meta.clone(),
-                formatted_date: lc.content.meta.date.format("%B %d, %Y").to_string(),
+                formatted_date: format_date_long(&lc.content.meta.date),
                 filename,
                 content_type: lc.content_type.clone(),
                 excerpt,
@@ -91,7 +99,7 @@ pub(crate) fn render_index_from_loaded(
             ContentItem {
                 html: lc.html.clone(),
                 meta: lc.content.meta.clone(),
-                formatted_date: lc.content.meta.date.format("%B %d, %Y").to_string(),
+                formatted_date: format_date_long(&lc.content.meta.date),
                 filename,
                 content_type: lc.content_type.clone(),
                 excerpt,
@@ -138,11 +146,11 @@ mod tests {
     use crate::LoadedContent;
     use crate::config::{Config, SiteConfig};
     use crate::content::ContentMeta;
-    use chrono::DateTime;
     use minijinja::Environment;
     use std::collections::HashMap;
     use std::path::PathBuf;
     use tempfile::TempDir;
+    use time::macros::datetime;
 
     /// Helper to create a test Config
     fn create_test_config(template_dir: &str, output_dir: &str) -> Config {
@@ -171,7 +179,7 @@ mod tests {
     fn create_test_meta() -> ContentMeta {
         ContentMeta {
             title: "Test Article".to_string(),
-            date: DateTime::parse_from_rfc3339("2024-01-15T10:00:00-05:00").unwrap(),
+            date: datetime!(2024-01-15 10:00:00 -5),
             author: "Test Author".to_string(),
             tags: vec!["rust".to_string(), "testing".to_string()],
             template: None,
@@ -358,15 +366,15 @@ mod tests {
         // Create three LoadedContent items with different dates
         let mut meta_old = create_test_meta();
         meta_old.title = "Old Post".to_string();
-        meta_old.date = DateTime::parse_from_rfc3339("2024-01-01T10:00:00-05:00").unwrap();
+        meta_old.date = datetime!(2024-01-01 10:00:00 -5);
 
         let mut meta_new = create_test_meta();
         meta_new.title = "New Post".to_string();
-        meta_new.date = DateTime::parse_from_rfc3339("2024-12-15T10:00:00-05:00").unwrap();
+        meta_new.date = datetime!(2024-12-15 10:00:00 -5);
 
         let mut meta_mid = create_test_meta();
         meta_mid.title = "Mid Post".to_string();
-        meta_mid.date = DateTime::parse_from_rfc3339("2024-06-15T10:00:00-05:00").unwrap();
+        meta_mid.date = datetime!(2024-06-15 10:00:00 -5);
 
         let loaded_old = LoadedContent {
             path: PathBuf::from("old.md"),
@@ -567,11 +575,11 @@ mod tests {
         // Create two test LoadedContent items
         let mut meta1 = create_test_meta();
         meta1.title = "First Post".to_string();
-        meta1.date = DateTime::parse_from_rfc3339("2024-01-15T10:00:00-05:00").unwrap();
+        meta1.date = datetime!(2024-01-15 10:00:00 -5);
 
         let mut meta2 = create_test_meta();
         meta2.title = "Second Post".to_string();
-        meta2.date = DateTime::parse_from_rfc3339("2024-02-15T10:00:00-05:00").unwrap();
+        meta2.date = datetime!(2024-02-15 10:00:00 -5);
 
         let loaded1 = LoadedContent {
             path: PathBuf::from("first.md"),

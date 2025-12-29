@@ -1,7 +1,7 @@
 // src/sitemap.rs
 
-use chrono::{DateTime, FixedOffset};
 use std::path::Path;
+use time::OffsetDateTime;
 
 use crate::LoadedContent;
 use crate::config::Config;
@@ -63,14 +63,16 @@ pub(crate) fn generate_sitemap(config: &Config, loaded_contents: &[LoadedContent
 }
 
 /// Formats a single URL entry for the sitemap.
-fn format_url_entry(base_url: &str, path: &str, lastmod: Option<&DateTime<FixedOffset>>) -> String {
+fn format_url_entry(base_url: &str, path: &str, lastmod: Option<&OffsetDateTime>) -> String {
     let mut entry = String::new();
     entry.push_str("  <url>\n");
     entry.push_str(&format!("    <loc>{}{}</loc>\n", base_url, path));
 
     if let Some(date) = lastmod {
         // Format as YYYY-MM-DD for sitemap compatibility
-        let formatted = date.format("%Y-%m-%d").to_string();
+        let format =
+            time::format_description::parse("[year]-[month]-[day]").expect("valid format");
+        let formatted = date.format(&format).expect("valid date");
         entry.push_str(&format!("    <lastmod>{}</lastmod>\n", formatted));
     }
 
@@ -126,7 +128,8 @@ mod tests {
     }
 
     fn create_test_meta(title: &str, date_str: &str) -> ContentMeta {
-        let date = DateTime::parse_from_rfc3339(date_str).unwrap();
+        use time::format_description::well_known::Rfc3339;
+        let date = OffsetDateTime::parse(date_str, &Rfc3339).unwrap();
         ContentMeta {
             title: title.to_string(),
             date,
@@ -229,7 +232,8 @@ mod tests {
 
     #[test]
     fn test_format_url_entry_with_lastmod() {
-        let date = DateTime::parse_from_rfc3339("2024-06-15T10:30:00+00:00").unwrap();
+        use time::format_description::well_known::Rfc3339;
+        let date = OffsetDateTime::parse("2024-06-15T10:30:00+00:00", &Rfc3339).unwrap();
         let entry = format_url_entry("https://example.com", "/post.html", Some(&date));
 
         assert!(entry.contains("<loc>https://example.com/post.html</loc>"));

@@ -1,6 +1,6 @@
 //src/content.rs
 
-use chrono::{DateTime, FixedOffset};
+use time::OffsetDateTime;
 use serde::{Deserialize, Serialize};
 use std::{
     fs,
@@ -34,7 +34,8 @@ pub(crate) struct ContentMeta {
     /// Title of the content piece (article, post, page, etc.)
     pub title: String,
     /// Publication date of the content (recommended format: YYYY-MM-DD)
-    pub date: DateTime<FixedOffset>,
+    #[serde(with = "time::serde::rfc3339")]
+    pub date: OffsetDateTime,
     /// Author of the content
     pub author: String,
     /// List of tags/categories associated with the content
@@ -199,14 +200,13 @@ pub(crate) fn load_metadata(markdown_path: &Path) -> Result<ContentMeta, Content
 /// Returns `ContentError::MarkdownParsingFailed` if markdown conversion fails.
 ///
 /// # Examples
-/// ```
+/// ```ignore
 /// # use std::path::PathBuf;
-/// # use your_crate::content::{Content, ContentMeta, convert_content};
-/// # use chrono::Utc;
+/// # use time::OffsetDateTime;
 /// # let content = Content {
 /// #     meta: ContentMeta {
 /// #         title: "Test".to_string(),
-/// #         date: Utc::now().fixed_offset(),
+/// #         date: OffsetDateTime::now_utc(),
 /// #         author: "Author".to_string(),
 /// #         tags: Vec::new(),
 /// #         template: None,
@@ -250,15 +250,13 @@ pub(crate) fn convert_content(content: &Content, path: PathBuf) -> Result<String
 /// or `ContentError::SyntaxHighlighting` if highlighting fails.
 ///
 /// # Examples
-/// ```
+/// ```ignore
 /// # use std::path::PathBuf;
-/// # use crate::content::{Content, ContentMeta, convert_content_with_highlighting};
-/// # use chrono::Utc;
-/// #
+/// # use time::OffsetDateTime;
 /// # let content = Content {
 /// #     meta: ContentMeta {
 /// #         title: "Test".to_string(),
-/// #         date: Utc::now(),
+/// #         date: OffsetDateTime::now_utc(),
 /// #         author: "Author".to_string(),
 /// #         tags: vec![],
 /// #         template: None,
@@ -369,19 +367,16 @@ pub(crate) fn get_excerpt_html(markdown: &str, summary_pattern: &str) -> String 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use chrono::{FixedOffset, TimeZone};
     use std::fs::File;
     use std::io::Write;
     use tempfile::tempdir;
+    use time::macros::datetime;
 
     // Helper function to create test metadata
     fn create_test_metadata() -> ContentMeta {
-        let fixed_offset = FixedOffset::east_opt(3600 * 5).unwrap(); // UTC+5
         ContentMeta {
             title: "Test Post".to_string(),
-            date: fixed_offset
-                .with_ymd_and_hms(2023, 12, 15, 10, 30, 0)
-                .unwrap(),
+            date: datetime!(2023-12-15 10:30:00 +5), // UTC+5
             author: "Test Author".to_string(),
             tags: vec!["rust".to_string(), "testing".to_string()],
             template: Some("custom.html".to_string()),
@@ -596,10 +591,7 @@ Should not be included.
         assert_eq!(meta.template, Some("custom.html".to_string()));
 
         // Verify the date was parsed correctly
-        let expected_date = FixedOffset::east_opt(3600 * 5) // UTC+5
-            .unwrap()
-            .with_ymd_and_hms(2023, 12, 15, 10, 30, 0)
-            .unwrap();
+        let expected_date = datetime!(2023-12-15 10:30:00 +5); // UTC+5
         assert_eq!(meta.date, expected_date);
     }
 
@@ -673,10 +665,7 @@ Should not be included.
         assert_eq!(content.data, "# Test Content\n\nThis is test content.");
 
         // Verify date was parsed correctly
-        let expected_date = FixedOffset::east_opt(3600 * 5) // UTC+5
-            .unwrap()
-            .with_ymd_and_hms(2023, 12, 15, 10, 30, 0)
-            .unwrap();
+        let expected_date = datetime!(2023-12-15 10:30:00 +5); // UTC+5
         assert_eq!(content.meta.date, expected_date);
     }
 
@@ -734,10 +723,7 @@ Should not be included.
         assert_eq!(meta.tags, vec!["rust"]);
 
         // Verify date was parsed
-        let expected_date = FixedOffset::east_opt(3600 * 5) // UTC+5
-            .unwrap()
-            .with_ymd_and_hms(2023, 12, 15, 10, 30, 0)
-            .unwrap();
+        let expected_date = datetime!(2023-12-15 10:30:00 +5); // UTC+5
         assert_eq!(meta.date, expected_date);
     }
 
