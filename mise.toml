@@ -29,6 +29,14 @@ run = "cargo test --bin marie-ssg -- --nocapture"
 description = "Run integration tests only"
 run = "cargo test --test integration_test -- --nocapture"
 
+[tasks.tests]
+description = "Run all tests with output"
+run = "cargo test -- --nocapture"
+
+[tasks.verify]
+description = "Full verification (lint + tests) before commit"
+run = "cargo clippy -- -D warnings && cargo test"
+
 [tasks.coverage]
 description = "Run tests with coverage report (requires cargo-tarpaulin)"
 run = "cargo tarpaulin --out Html --output-dir coverage"
