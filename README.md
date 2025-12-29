@@ -170,6 +170,7 @@ mise install
 ### Build Tasks
 
 ```bash
+mise run verify                # Full verification (lint + tests)
 mise run lint                  # Clippy with warnings as errors
 mise run tests                 # Run all tests
 mise run unit-tests            # Run unit tests only
@@ -233,18 +234,19 @@ src/
 
 ```
 -> cargo tree --depth 1
-marie-ssg v0.8.1 (/.../marie-ssg)
+marie-ssg v0.9.0 (/.../marie-ssg)
 ├── argh v0.1.13
 ├── autumnus v0.7.8
 ├── basic-toml v0.1.10
-├── chrono v0.4.41
 ├── fsevent v2.3.0
+├── kiters v0.1.0
 ├── markdown v1.0.0
 ├── minijinja v2.14.0
 ├── minijinja-contrib v2.14.0
 ├── rayon v1.11.0
 ├── serde v1.0.228
 ├── thiserror v2.0.16
+├── time v0.3.44
 ├── tracing v0.1.41
 ├── tracing-subscriber v0.3.19
 └── walkdir v2.5.0
@@ -258,6 +260,14 @@ marie-ssg v0.8.1 (/.../marie-ssg)
 ```
 
 ## Version History
+
+### v0.9.0 (2025-12-30)
+
+- Migrated from `chrono` to `time` crate for datetime handling
+- Added `kiters` crate for UTC timestamp formatting in tracing
+- Enhanced tracing with EnvFilter support and UTC timestamps
+- Restored missing mise tasks (`tests`, `verify`)
+- Added test coverage for content.rs edge cases
 
 ### v0.8.1 (2025-12-24)
 
