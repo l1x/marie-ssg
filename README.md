@@ -39,6 +39,10 @@ mise run check-deps   # Run audit + find unused dependencies
 
 See [examples](examples/)
 
+## Context
+
+See [agents](AGENTS.md)
+
 ## Version History
 
 ### v0.9.0 (2025-12-30)
