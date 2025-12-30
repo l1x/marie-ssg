@@ -184,56 +184,9 @@ pub(crate) fn load_metadata(markdown_path: &Path) -> Result<ContentMeta, Content
     Ok(metadata)
 }
 
-/// Converts markdown content to HTML using the Comrak parser.
-///
-/// This function takes a `Content` struct and converts its markdown data
-/// to HTML using GitHub Flavored Markdown (GFM) options.
-///
-/// # Arguments
-/// * `content` - The content containing markdown to convert
-/// * `path` - Path to the original file (for error reporting)
-///
-/// # Returns
-/// `Result<String, ContentError>` - The converted HTML or an error
-///
-/// # Errors
-/// Returns `ContentError::MarkdownParsingFailed` if markdown conversion fails.
-///
-/// # Examples
-/// ```ignore
-/// # use std::path::PathBuf;
-/// # use time::OffsetDateTime;
-/// # let content = Content {
-/// #     meta: ContentMeta {
-/// #         title: "Test".to_string(),
-/// #         date: OffsetDateTime::now_utc(),
-/// #         author: "Author".to_string(),
-/// #         tags: Vec::new(),
-/// #         template: None,
-/// #     },
-/// #     data: "# Hello World".to_string(),
-/// # };
-/// let html = convert_content(&content, PathBuf::from("test.md"))?;
-/// assert!(html.contains("<h1>Hello World</h1>"));
-/// ```
-#[allow(dead_code)]
-pub(crate) fn convert_content(content: &Content, path: PathBuf) -> Result<String, ContentError> {
-    // Convert markdown to HTML using Comrak.
-    match markdown::to_html_with_options(&content.data, &markdown::Options::gfm()) {
-        Ok(html) => Ok(html),
-        Err(e) => {
-            error!("Markdown parsing failed: {}", e);
-            Err(ContentError::MarkdownParsingFailed {
-                path,
-                message: e.to_string(),
-            })
-        }
-    }
-}
-
 /// Convert markdown content to HTML with optional syntax highlighting.
 ///
-/// This function works like `convert_content` but can apply syntax highlighting
+/// This function converts markdown to HTML and can apply syntax highlighting
 /// to code blocks if `highlighting_enabled` is true.
 ///
 /// # Arguments
@@ -468,31 +421,6 @@ Should not be included.
         let markdown = "Just some regular content without the pattern.";
         let excerpt = get_excerpt_html(markdown, "## Summary");
         assert_eq!(excerpt, "");
-    }
-
-    #[test]
-    fn test_convert_content_success() {
-        let content = Content {
-            meta: create_test_metadata(),
-            data: "# Hello World\n\nThis is a **test**.".to_string(),
-        };
-
-        let result = convert_content(&content, PathBuf::from("test.md"));
-        assert!(result.is_ok());
-        let html = result.unwrap();
-        assert!(html.contains("<h1>Hello World</h1>"));
-        assert!(html.contains("<strong>test</strong>"));
-    }
-
-    #[test]
-    fn test_convert_content_invalid_markdown() {
-        let content = Content {
-            meta: create_test_metadata(),
-            data: "Invalid markdown with unclosed **bold".to_string(),
-        };
-
-        let result = convert_content(&content, PathBuf::from("test.md"));
-        assert!(result.is_ok()); // Comrak is generally tolerant of invalid markdown
     }
 
     #[test]
