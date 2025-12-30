@@ -17,7 +17,18 @@ name = "toml_benchmark"
 
 [dependencies]
 argh = { version = "0" }
-autumnus = { version = "0.7" }
+autumnus = { version = "0.7", default-features = false, features = [
+    "lang-bash",
+    "lang-css",
+    "lang-html",
+    "lang-javascript",
+    "lang-json",
+    "lang-python",
+    "lang-rust",
+    "lang-toml",
+    "lang-typescript",
+    "lang-yaml",
+] }
 kiters = { version = "0" }
 time = { version = "0", features = ["serde", "serde-human-readable", "parsing", "formatting", "macros"] }
 markdown = { version = "1" }
