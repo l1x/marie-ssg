@@ -1,24 +1,24 @@
 //src/content.rs
 
-use time::OffsetDateTime;
 use serde::{Deserialize, Serialize};
 use std::{
     fs,
     path::{Path, PathBuf},
 };
 use thiserror::Error;
+use time::OffsetDateTime;
 use tracing::error;
 
 use crate::syntax::highlight_html;
 
 /// Represents a complete content piece with metadata and raw markdown data.
 ///
-/// This struct combines the parsed frontmatter metadata with the actual
+/// This struct combines the parsed metadata with the actual
 /// markdown content of a file. It serves as the primary data structure
 /// for processing individual content files throughout the application.
 #[derive(Debug)]
 pub(crate) struct Content {
-    /// The parsed frontmatter metadata containing title, date, author, etc.
+    /// The parsed metadata containing title, date, author, etc.
     pub meta: ContentMeta,
     /// The raw markdown content body as read from the file.
     pub data: String,
@@ -26,7 +26,7 @@ pub(crate) struct Content {
 
 /// Metadata for content pieces, typically stored in `.meta.toml` files.
 ///
-/// This struct represents the frontmatter data that accompanies each
+/// This struct represents metadata that accompanies each
 /// markdown content file. It contains essential information about the
 /// content such as title, publication date, author, and tags.
 #[derive(Clone, Debug, Deserialize, Serialize)]
@@ -55,7 +55,7 @@ pub(crate) struct ContentMeta {
 pub(crate) struct ContentItem {
     /// The HTML-rendered content body
     pub(crate) html: String,
-    /// The parsed metadata from the content's frontmatter
+    /// The parsed metadata
     pub(crate) meta: ContentMeta,
     /// Human-readable formatted date string
     pub(crate) formatted_date: String,
@@ -761,7 +761,7 @@ Main content.
             .unwrap()
             .write_all(meta_content.as_bytes())
             .unwrap();
-        
+
         // Ensure markdown file does NOT exist
         if md_path.exists() {
             std::fs::remove_file(&md_path).unwrap();
@@ -769,7 +769,7 @@ Main content.
 
         let result = load_content(&md_path);
         assert!(result.is_err());
-        
+
         if let Err(ContentError::Io { path, source: _ }) = result {
             assert_eq!(path, md_path);
         } else {
