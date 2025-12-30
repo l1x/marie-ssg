@@ -21,13 +21,13 @@ pub(crate) struct Config {
 }
 
 impl Config {
-    pub fn load_from_file(path: &str) -> Result<Self, Box<dyn std::error::Error>> {
+    pub fn load_from_file(path: &str) -> Result<Self, ConfigError> {
         let content = fs::read_to_string(path)?;
         Self::from_str(&content)
     }
 
     // Helper for tests - parses TOML from string
-    pub(crate) fn from_str(content: &str) -> Result<Self, Box<dyn std::error::Error>> {
+    pub(crate) fn from_str(content: &str) -> Result<Self, ConfigError> {
         Ok(toml::from_str(content)?)
     }
 }

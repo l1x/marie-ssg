@@ -83,7 +83,7 @@ pub(crate) struct LoadedContent {
 /// The main entry point for the application logic (uses cached templates).
 #[instrument(skip_all)]
 pub(crate) fn build(config_file: &str) -> Result<(), RunError> {
-    let config = Config::load_from_file(config_file).expect("Failed to load configuration");
+    let config = Config::load_from_file(config_file)?;
     let env = init_environment(&config.site.template_dir);
     run_build(config_file, &config, env)
 }
@@ -91,7 +91,7 @@ pub(crate) fn build(config_file: &str) -> Result<(), RunError> {
 /// Build with a fresh template environment (for watch mode).
 #[instrument(skip_all)]
 pub(crate) fn build_fresh(config_file: &str) -> Result<(), RunError> {
-    let config = Config::load_from_file(config_file).expect("Failed to load configuration");
+    let config = Config::load_from_file(config_file)?;
     let env = create_environment(&config.site.template_dir);
     run_build(config_file, &config, &env)
 }
@@ -253,7 +253,7 @@ fn watch(config_file: &str) -> Result<(), RunError> {
     use std::time::{Duration, Instant};
 
     // Load config to get directories to watch
-    let config = Config::load_from_file(config_file).expect("Failed to load configuration");
+    let config = Config::load_from_file(config_file)?;
 
     let paths_to_watch = get_paths_to_watch(config_file, &config);
 
@@ -334,11 +334,13 @@ fn main() {
         Some(SubCommand::Build(args)) => {
             if let Err(e) = build(&args.config_file) {
                 error!("{:?}", e);
+                std::process::exit(1);
             }
         }
         Some(SubCommand::Watch(args)) => {
             if let Err(e) = watch(&args.config_file) {
                 error!("{:?}", e);
+                std::process::exit(1);
             }
         }
         None => {

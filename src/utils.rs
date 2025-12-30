@@ -2,6 +2,7 @@
 
 use std::path::{Path, PathBuf};
 use time::OffsetDateTime;
+use time::macros::format_description;
 use walkdir::WalkDir;
 
 use crate::config::Config;
@@ -106,9 +107,12 @@ pub(crate) fn find_markdown_files(content_dir: &str) -> Vec<PathBuf> {
 /// # Returns
 /// A new PathBuf with the date prefix (e.g., "out/posts/2023-05-15-my-post.html")
 pub(crate) fn add_date_prefix(output_path: PathBuf, date: &OffsetDateTime) -> PathBuf {
-    // Format the date as YYYY-MM-DD
-    let format = time::format_description::parse("[year]-[month]-[day]").expect("valid format");
-    let date_str = date.format(&format).expect("valid date");
+    // Format validated at compile time via macro
+    const FORMAT: &[time::format_description::FormatItem<'static>] =
+        format_description!("[year]-[month]-[day]");
+    let date_str = date
+        .format(&FORMAT)
+        .unwrap_or_else(|_| "0000-00-00".to_string());
 
     // Get the parent directory and file name separately
     let parent_dir = output_path.parent().unwrap_or_else(|| Path::new(""));

@@ -4,6 +4,7 @@ use minijinja::{Environment, Value, context, path_loader};
 use minijinja_contrib::add_to_environment;
 use std::sync::OnceLock;
 use time::OffsetDateTime;
+use time::macros::format_description;
 
 use crate::{
     config::Config,
@@ -12,9 +13,11 @@ use crate::{
 
 /// Format a date as "Month Day, Year" (e.g., "January 15, 2024")
 fn format_date_long(date: &OffsetDateTime) -> String {
-    let format = time::format_description::parse("[month repr:long] [day], [year]")
-        .expect("valid format");
-    date.format(&format).expect("valid date")
+    // Format validated at compile time via macro
+    const FORMAT: &[time::format_description::FormatItem<'static>] =
+        format_description!("[month repr:long] [day], [year]");
+    date.format(&FORMAT)
+        .unwrap_or_else(|_| "Invalid date".to_string())
 }
 
 /// Filter to mark URL paths as safe for HTML rendering.

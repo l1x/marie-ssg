@@ -2,6 +2,7 @@
 
 use std::path::Path;
 use time::OffsetDateTime;
+use time::macros::format_description;
 
 use crate::LoadedContent;
 use crate::config::Config;
@@ -69,11 +70,12 @@ fn format_url_entry(base_url: &str, path: &str, lastmod: Option<&OffsetDateTime>
     entry.push_str(&format!("    <loc>{}{}</loc>\n", base_url, path));
 
     if let Some(date) = lastmod {
-        // Format as YYYY-MM-DD for sitemap compatibility
-        let format =
-            time::format_description::parse("[year]-[month]-[day]").expect("valid format");
-        let formatted = date.format(&format).expect("valid date");
-        entry.push_str(&format!("    <lastmod>{}</lastmod>\n", formatted));
+        // Format validated at compile time via macro
+        const FORMAT: &[time::format_description::FormatItem<'static>] =
+            format_description!("[year]-[month]-[day]");
+        if let Ok(formatted) = date.format(&FORMAT) {
+            entry.push_str(&format!("    <lastmod>{}</lastmod>\n", formatted));
+        }
     }
 
     entry.push_str("  </url>\n");
