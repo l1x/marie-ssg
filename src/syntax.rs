@@ -456,6 +456,23 @@ mod tests {
     }
 
     #[test]
+    #[ignore = "BUG mssg-vh1.11: Remove #[ignore] when fix is applied"]
+    fn test_unescape_html_entities_utf8_preservation() {
+        // BUG: Line 97 uses `bytes[i] as char` which corrupts multi-byte UTF-8
+        // UTF-8 characters like 'é' (2 bytes: 0xC3 0xA9) get split into
+        // separate chars: char(195) and char(169), producing "Ã©" instead of "é"
+        //
+        // This test documents the bug - it will FAIL until the fix is applied
+        assert_eq!(unescape_html_entities("café"), "café");
+        assert_eq!(unescape_html_entities("日本語"), "日本語");
+        assert_eq!(unescape_html_entities("emoji: 🦀"), "emoji: 🦀");
+        assert_eq!(
+            unescape_html_entities("mixed: &lt;café&gt;"),
+            "mixed: <café>"
+        );
+    }
+
+    #[test]
     fn test_highlight_html_with_empty_code_block() {
         let html = r#"<p>Before</p>
 <pre><code class="language-rust"></code></pre>
