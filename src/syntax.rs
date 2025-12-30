@@ -90,61 +90,54 @@ fn extract_language_from_class(class: &str) -> Option<&str> {
 ///
 fn unescape_html_entities(input: &str) -> String {
     let mut out = String::with_capacity(input.len());
-    let bytes = input.as_bytes();
-    let mut i = 0;
-    while i < bytes.len() {
-        if bytes[i] != b'&' {
-            out.push(bytes[i] as char);
-            i += 1;
-            continue;
-        }
-        // Find endpoint of the entity
-        if i + 1 >= bytes.len() {
-            out.push('&');
-            i += 1;
-            continue;
-        }
-        let mut end = i + 1;
-        while end < bytes.len() && bytes[end] != b';' {
-            end += 1;
-        }
-        if end == bytes.len() {
-            out.push('&');
-            i += 1;
-            continue;
-        }
+    let mut remaining = input;
 
-        // "entity" is the string between '&' and ';' (e.g. "lt" or "#39")
-        let entity = &input[i + 1..end];
+    while let Some(amp_pos) = remaining.find('&') {
+        // Copy everything before the '&' (preserves UTF-8)
+        out.push_str(&remaining[..amp_pos]);
+        remaining = &remaining[amp_pos..];
 
-        let decoded = match entity {
-            "lt" => Some('<'),
-            "gt" => Some('>'),
-            "amp" => Some('&'),
-            "quot" => Some('"'),
-            "apos" => Some('\''),
+        // Look for ';' to close the entity
+        match remaining[1..].find(';') {
+            Some(semi_pos) => {
+                let entity = &remaining[1..semi_pos + 1];
+                let decoded = match entity {
+                    "lt" => Some('<'),
+                    "gt" => Some('>'),
+                    "amp" => Some('&'),
+                    "quot" => Some('"'),
+                    "apos" => Some('\''),
+                    s if s.starts_with('#') && !s.starts_with("#x") => {
+                        s[1..].parse::<u32>().ok().and_then(char::from_u32)
+                    }
+                    s if s.starts_with("#x") => u32::from_str_radix(&s[2..], 16)
+                        .ok()
+                        .and_then(char::from_u32),
+                    _ => None,
+                };
 
-            // ✅ NEW: Handle Decimal Entities (e.g., &#39;)
-            s if s.starts_with('#') && !s.starts_with("#x") => {
-                s[1..].parse::<u32>().ok().and_then(char::from_u32)
+                match decoded {
+                    Some(ch) => {
+                        out.push(ch);
+                        remaining = &remaining[semi_pos + 2..];
+                    }
+                    None => {
+                        // Unknown entity → copy verbatim including '&' and ';'
+                        out.push_str(&remaining[..semi_pos + 2]);
+                        remaining = &remaining[semi_pos + 2..];
+                    }
+                }
             }
-
-            s if s.starts_with("#x") => u32::from_str_radix(&s[2..], 16)
-                .ok()
-                .and_then(char::from_u32),
-
-            _ => None,
-        };
-
-        match decoded {
-            Some(ch) => out.push(ch),
             None => {
-                // Unknown entity → copy verbatim including '&' and ';'
-                out.push_str(&input[i..=end]);
+                // No ';' found, just output '&' and continue
+                out.push('&');
+                remaining = &remaining[1..];
             }
         }
-        i = end + 1;
     }
+
+    // Copy any remaining content (preserves UTF-8)
+    out.push_str(remaining);
     out
 }
 
@@ -456,13 +449,10 @@ mod tests {
     }
 
     #[test]
-    #[ignore = "BUG mssg-vh1.11: Remove #[ignore] when fix is applied"]
     fn test_unescape_html_entities_utf8_preservation() {
-        // BUG: Line 97 uses `bytes[i] as char` which corrupts multi-byte UTF-8
-        // UTF-8 characters like 'é' (2 bytes: 0xC3 0xA9) get split into
-        // separate chars: char(195) and char(169), producing "Ã©" instead of "é"
-        //
-        // This test documents the bug - it will FAIL until the fix is applied
+        // Regression test for mssg-vh1.11: UTF-8 preservation
+        // The old byte-based implementation corrupted multi-byte UTF-8 characters.
+        // Fixed by using string slicing with push_str() instead of byte indexing.
         assert_eq!(unescape_html_entities("café"), "café");
         assert_eq!(unescape_html_entities("日本語"), "日本語");
         assert_eq!(unescape_html_entities("emoji: 🦀"), "emoji: 🦀");
