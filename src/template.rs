@@ -53,6 +53,30 @@ pub(crate) fn create_environment(template_dir: &str) -> Environment<'static> {
     env
 }
 
+/// Build a ContentItem from LoadedContent for template rendering.
+///
+/// This helper extracts the common logic for building template-ready content items,
+/// computing the filename, excerpt, and formatted date.
+fn build_content_item(lc: &crate::LoadedContent, config: &Config) -> ContentItem {
+    let filename = lc
+        .output_path
+        .strip_prefix(&config.site.output_dir)
+        .unwrap_or(&lc.output_path)
+        .to_string_lossy()
+        .to_string();
+
+    let excerpt = get_excerpt_html(&lc.content.data, "## Context");
+
+    ContentItem {
+        html: lc.html.clone(),
+        meta: lc.content.meta.clone(),
+        formatted_date: format_date_long(&lc.content.meta.date),
+        filename,
+        content_type: lc.content_type.clone(),
+        excerpt,
+    }
+}
+
 pub(crate) fn render_index_from_loaded(
     env: &Environment,
     config: &Config,
@@ -64,52 +88,14 @@ pub(crate) fn render_index_from_loaded(
 
     let mut contents: Vec<ContentItem> = loaded
         .iter()
-        .map(|lc| {
-            let filename = lc
-                .output_path
-                .strip_prefix(&config.site.output_dir)
-                .unwrap_or(&lc.output_path)
-                .to_string_lossy()
-                .to_string();
-
-            let excerpt = get_excerpt_html(&lc.content.data, "## Context");
-
-            ContentItem {
-                html: lc.html.clone(),
-                meta: lc.content.meta.clone(),
-                formatted_date: format_date_long(&lc.content.meta.date),
-                filename,
-                content_type: lc.content_type.clone(),
-                excerpt,
-            }
-        })
+        .map(|lc| build_content_item(lc, config))
         .collect();
-
     contents.sort_by(|a, b| b.meta.date.cmp(&a.meta.date));
 
     let mut all_contents: Vec<ContentItem> = all_content
         .iter()
-        .map(|lc| {
-            let filename = lc
-                .output_path
-                .strip_prefix(&config.site.output_dir)
-                .unwrap_or(&lc.output_path)
-                .to_string_lossy()
-                .to_string();
-
-            let excerpt = get_excerpt_html(&lc.content.data, "## Context");
-
-            ContentItem {
-                html: lc.html.clone(),
-                meta: lc.content.meta.clone(),
-                formatted_date: format_date_long(&lc.content.meta.date),
-                filename,
-                content_type: lc.content_type.clone(),
-                excerpt,
-            }
-        })
+        .map(|lc| build_content_item(lc, config))
         .collect();
-
     all_contents.sort_by(|a, b| b.meta.date.cmp(&a.meta.date));
 
     let context = context! {
