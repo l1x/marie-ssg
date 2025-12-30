@@ -266,8 +266,10 @@ marie-ssg v0.9.0 (/.../marie-ssg)
 - Migrated from `chrono` to `time` crate for datetime handling
 - Added `kiters` crate for UTC timestamp formatting in tracing
 - Enhanced tracing with EnvFilter support and UTC timestamps
+- Migrated from `basic-toml` to `toml` crate (~2x faster parsing)
+- Reduced binary size from 80MB to 9MB (89% reduction) by limiting syntax highlighting languages
 - Restored missing mise tasks (`tests`, `verify`)
-- Added test coverage for content.rs edge cases
+- Added TOML parser benchmark and migration documentation
 
 ### v0.8.1 (2025-12-24)
 
