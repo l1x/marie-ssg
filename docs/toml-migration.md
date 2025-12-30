@@ -4,12 +4,12 @@ This document compares the `basic-toml` and `toml` crates and outlines the migra
 
 ## Why Migrate?
 
-| Aspect | basic-toml | toml |
-|--------|------------|------|
+| Aspect      | basic-toml             | toml              |
+| ----------- | ---------------------- | ----------------- |
 | Performance | ~20µs (typical config) | ~10µs (2x faster) |
-| Maintained | **No** (archived) | Yes |
-| TOML Spec | 1.0 | 1.1 |
-| Parser | Hand-written (old) | winnow (modern) |
+| Maintained  | **No** (archived)      | Yes               |
+| TOML Spec   | 1.0                    | 1.1               |
+| Parser      | Hand-written (old)     | winnow (modern)   |
 
 ## Benchmark Results
 
@@ -24,12 +24,14 @@ This document compares the `basic-toml` and `toml` crates and outlines the migra
 ## Current Code (basic-toml)
 
 ### Cargo.toml
+
 ```toml
 [dependencies]
 basic-toml = { version = "0" }
 ```
 
 ### src/config.rs
+
 ```rust
 use thiserror::Error;
 
@@ -49,6 +51,7 @@ impl Config {
 ```
 
 ### src/content.rs
+
 ```rust
 basic_toml::from_str(&meta_content).map_err(|e| ContentError::TomlParse {
     path: meta_path,
@@ -59,12 +62,14 @@ basic_toml::from_str(&meta_content).map_err(|e| ContentError::TomlParse {
 ## After Migration (toml)
 
 ### Cargo.toml
+
 ```toml
 [dependencies]
 toml = { version = "0" }
 ```
 
 ### src/config.rs
+
 ```rust
 use thiserror::Error;
 
@@ -84,6 +89,7 @@ impl Config {
 ```
 
 ### src/content.rs
+
 ```rust
 toml::from_str(&meta_content).map_err(|e| ContentError::TomlParse {
     path: meta_path,
@@ -121,13 +127,14 @@ let config: Config = toml::from_str(content)?;
 ```
 
 The only difference is the error type:
+
 - `basic_toml::Error`
 - `toml::de::Error`
 
 ## Files to Modify
 
-| File | Changes |
-|------|---------|
-| `Cargo.toml` | Swap dependency |
-| `src/config.rs` | Update error type, change `basic_toml::` to `toml::` |
-| `src/content.rs` | Change `basic_toml::` to `toml::` |
+| File             | Changes                                              |
+| ---------------- | ---------------------------------------------------- |
+| `Cargo.toml`     | Swap dependency                                      |
+| `src/config.rs`  | Update error type, change `basic_toml::` to `toml::` |
+| `src/content.rs` | Change `basic_toml::` to `toml::`                    |

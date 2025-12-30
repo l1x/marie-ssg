@@ -53,6 +53,18 @@ run = "cargo build --release"
 description = "Building the development version"
 run = "cargo build --release --timings"
 
+[tasks.audit]
+description = "Run security audit on dependencies"
+run = "cargo audit"
+
+[tasks.machete]
+description = "Find unused dependencies"
+run = "cargo machete"
+
+[tasks.check-deps]
+description = "Run security audit and find unused dependencies"
+depends = ["audit", "machete"]
+
 [tasks.show-issues]
 description = "List all open issues"
 run = "bd list"
