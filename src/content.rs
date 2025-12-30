@@ -89,7 +89,7 @@ pub(crate) enum ContentError {
         path: PathBuf,
         /// The underlying TOML parsing error
         #[source]
-        source: basic_toml::Error,
+        source: toml::de::Error,
     },
     /// Markdown parsing or conversion failure
     #[error("Markdown parsing failed for file {path:?}: {message}")]
@@ -176,7 +176,7 @@ pub(crate) fn load_metadata(markdown_path: &Path) -> Result<ContentMeta, Content
     })?;
 
     let metadata: ContentMeta =
-        basic_toml::from_str(&meta_content).map_err(|e| ContentError::TomlParse {
+        toml::from_str(&meta_content).map_err(|e| ContentError::TomlParse {
             path: meta_path,
             source: e,
         })?;
@@ -695,12 +695,12 @@ Should not be included.
         let meta = create_test_metadata();
 
         // Serialize to TOML
-        let toml_string = basic_toml::to_string(&meta).unwrap();
+        let toml_string = toml::to_string(&meta).unwrap();
         assert!(toml_string.contains("title = \"Test Post\""));
         assert!(toml_string.contains("tags = [\"rust\", \"testing\"]"));
 
         // Deserialize back
-        let deserialized: ContentMeta = basic_toml::from_str(&toml_string).unwrap();
+        let deserialized: ContentMeta = toml::from_str(&toml_string).unwrap();
         assert_eq!(deserialized.title, meta.title);
         assert_eq!(deserialized.author, meta.author);
         assert_eq!(deserialized.tags, meta.tags);
@@ -716,7 +716,7 @@ Should not be included.
     tags = ["rust"]
     "#;
 
-        let meta: ContentMeta = basic_toml::from_str(meta_content).unwrap();
+        let meta: ContentMeta = toml::from_str(meta_content).unwrap();
         assert_eq!(meta.template, None);
         assert_eq!(meta.title, "Test Post");
         assert_eq!(meta.author, "Test Author");

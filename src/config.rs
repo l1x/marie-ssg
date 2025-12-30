@@ -28,7 +28,7 @@ impl Config {
 
     // Helper for tests - parses TOML from string
     pub(crate) fn from_str(content: &str) -> Result<Self, Box<dyn std::error::Error>> {
-        Ok(basic_toml::from_str(content)?)
+        Ok(toml::from_str(content)?)
     }
 }
 
@@ -79,7 +79,7 @@ pub(crate) enum ConfigError {
     #[error("IO error reading config file: {0}")]
     Io(#[from] std::io::Error),
     #[error("TOML parsing error in config file: {0}")]
-    TomlParse(#[from] basic_toml::Error),
+    TomlParse(#[from] toml::de::Error),
 }
 
 #[derive(Debug, Deserialize, Serialize)]
