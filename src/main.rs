@@ -1,6 +1,6 @@
 // src/main.rs
 use argh::FromArgs;
-use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
+use rayon::iter::{IntoParallelIterator, ParallelIterator};
 use std::path::PathBuf;
 use tracing::{debug, instrument};
 use tracing::{error, info};
@@ -129,21 +129,21 @@ fn run_build(
     let start = std::time::Instant::now();
 
     let loaded_contents: Vec<LoadedContent> = files
-        .par_iter() // Parallel iterator
+        .into_par_iter() // Parallel iterator - consumes Vec for owned PathBufs
         .map(|file| -> Result<LoadedContent, RunError> {
             info!("Loading: {}", file.display());
 
-            let content_type = get_content_type(file, &config.site.content_dir);
-            let content = load_content(file)?;
+            let content_type = get_content_type(&file, &config.site.content_dir);
+            let content = load_content(&file)?;
             let html = convert_content_with_highlighting(
                 &content,
-                file.clone(),
+                &file, // Pass reference - no clone needed
                 config.site.syntax_highlighting_enabled,
                 &config.site.syntax_highlighting_theme,
             )?;
 
             let mut output_path =
-                get_output_path(file, &config.site.content_dir, &config.site.output_dir);
+                get_output_path(&file, &config.site.content_dir, &config.site.output_dir);
             if let Some(ct_config) = config.content.get(&content_type)
                 && ct_config.output_naming.as_deref() == Some("date")
             {
@@ -151,7 +151,7 @@ fn run_build(
             }
 
             Ok(LoadedContent {
-                path: file.clone(),
+                path: file, // Move owned PathBuf - no clone needed
                 content,
                 html,
                 content_type,

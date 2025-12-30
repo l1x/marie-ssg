@@ -263,12 +263,12 @@ pub(crate) fn convert_content(content: &Content, path: PathBuf) -> Result<String
 /// #     },
 /// #     data: "# Hello World\n\n```rust\nfn main() {}\n```".to_string(),
 /// # };
-/// let html = convert_content_with_highlighting(&content, PathBuf::from("test.md"), true, "github_dark");
+/// let html = convert_content_with_highlighting(&content, Path::new("test.md"), true, "github_dark");
 /// assert!(html.contains("<h1>Hello World</h1>"));
 /// ```
 pub(crate) fn convert_content_with_highlighting(
     content: &Content,
-    path: PathBuf,
+    path: &Path,
     highlighting_enabled: bool,
     theme: &str,
 ) -> Result<String, ContentError> {
@@ -278,7 +278,7 @@ pub(crate) fn convert_content_with_highlighting(
         Err(e) => {
             error!("Markdown parsing failed: {}", e);
             return Err(ContentError::MarkdownParsingFailed {
-                path,
+                path: path.to_path_buf(),
                 message: e.to_string(),
             });
         }
@@ -292,7 +292,7 @@ pub(crate) fn convert_content_with_highlighting(
                 error!("Syntax highlighting failed: {}", e);
                 // We could fall back to unhighlighted HTML, but for now we'll error
                 Err(ContentError::SyntaxHighlighting {
-                    path,
+                    path: path.to_path_buf(),
                     message: e.to_string(),
                 })
             }
@@ -505,7 +505,7 @@ Should not be included.
 
         let result = convert_content_with_highlighting(
             &content,
-            PathBuf::from("test.md"),
+            Path::new("test.md"),
             true,
             "github_dark",
         );
@@ -527,7 +527,7 @@ Should not be included.
 
         let result = convert_content_with_highlighting(
             &content,
-            PathBuf::from("test.md"),
+            Path::new("test.md"),
             false,
             "github_dark",
         );
@@ -549,7 +549,7 @@ Should not be included.
 
         let result = convert_content_with_highlighting(
             &content,
-            PathBuf::from("test.md"),
+            Path::new("test.md"),
             true,
             "github_dark",
         );
