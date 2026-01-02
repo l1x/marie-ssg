@@ -437,13 +437,13 @@ template = "custom.html"             # Optional: override default template
 
 ### Metadata Fields
 
-| Field | Required | Description |
-|-------|----------|-------------|
-| title | Yes | Article title |
-| date | Yes | Publication date (RFC 3339: `YYYY-MM-DDTHH:MM:SS+00:00`) |
-| author | Yes | Author name |
-| tags | Yes | Array of tags (can be empty: `[]`) |
-| template | No | Override the content type's default template |
+| Field    | Required | Description                                              |
+|----------|----------|----------------------------------------------------------|
+| title    | Yes      | Article title                                            |
+| date     | Yes      | Publication date (RFC 3339: `YYYY-MM-DDTHH:MM:SS+00:00`) |
+| author   | Yes      | Author name                                              |
+| tags     | Yes      | Array of tags (can be empty: `[]`)                       |
+| template | No       | Override the content type's default template             |
 
 ## Templates (Jinja2/Minijinja)
 
@@ -473,17 +473,17 @@ Templates use Jinja2 syntax via the Minijinja library.
 {{% endfor %}}
 ```
 
-| Property | Description |
-|----------|-------------|
-| `item.html` | Full rendered HTML content |
-| `item.meta.title` | Article title |
-| `item.meta.date` | Date object |
-| `item.meta.author` | Author name |
-| `item.meta.tags` | List of tags |
-| `item.formatted_date` | Human-readable date (e.g., "January 15, 2024") |
-| `item.filename` | Output path (e.g., `blog/2024-01-15-hello.html`) |
-| `item.content_type` | Content type (e.g., "blog") |
-| `item.excerpt` | HTML excerpt from "## Context" section |
+| Property              | Description                                        |
+|-----------------------|----------------------------------------------------|
+| `item.html`           | Full rendered HTML content                         |
+| `item.meta.title`     | Article title                                      |
+| `item.meta.date`      | Date object                                        |
+| `item.meta.author`    | Author name                                        |
+| `item.meta.tags`      | List of tags                                       |
+| `item.formatted_date` | Human-readable date (e.g., "January 15, 2024")     |
+| `item.filename`       | Output path (e.g., `blog/2024-01-15-hello.html`)   |
+| `item.content_type`   | Content type (e.g., "blog")                        |
+| `item.excerpt`        | HTML excerpt from "## Context" section             |
 
 ### Filters
 
