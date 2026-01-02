@@ -260,6 +260,7 @@ mod tests {
                 content_template: "project.html".to_string(),
                 index_template: "projects_index.html".to_string(),
                 output_naming: Some("default".to_string()),
+                rss_include: None,
             },
         );
         content_types.insert(
@@ -268,6 +269,7 @@ mod tests {
                 content_template: "blog_post.html".to_string(),
                 index_template: "blog_index.html".to_string(),
                 output_naming: Some("default".to_string()),
+                rss_include: None,
             },
         );
 
@@ -286,6 +288,7 @@ mod tests {
                 syntax_highlighting_theme: crate::syntax::DEFAULT_THEME.to_string(),
                 root_static: HashMap::new(),
                 sitemap_enabled: true,
+                rss_enabled: true,
             },
             content: content_types,
             dynamic: HashMap::new(),

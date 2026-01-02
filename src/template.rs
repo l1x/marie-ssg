@@ -158,6 +158,7 @@ mod tests {
                 syntax_highlighting_theme: crate::syntax::DEFAULT_THEME.to_string(),
                 root_static: HashMap::new(),
                 sitemap_enabled: true,
+                rss_enabled: true,
             },
             content: HashMap::new(),
             dynamic: HashMap::new(),

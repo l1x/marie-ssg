@@ -23,6 +23,7 @@ mod config;
 mod content;
 mod error;
 mod output;
+mod rss;
 mod sitemap;
 mod syntax;
 mod template;
@@ -239,6 +240,17 @@ fn run_build(
             &sitemap_xml,
         )?;
         info!("Generated sitemap.xml");
+    }
+
+    // 7. Generate RSS feed (if enabled)
+    //
+    if config.site.rss_enabled {
+        let rss_xml = rss::generate_rss(config, &loaded_contents);
+        write_output_file(
+            &PathBuf::from(&config.site.output_dir).join("feed.xml"),
+            &rss_xml,
+        )?;
+        info!("Generated feed.xml");
     }
 
     info!("Process completed successfully.");

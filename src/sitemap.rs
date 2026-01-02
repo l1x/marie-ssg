@@ -105,6 +105,7 @@ mod tests {
                 index_template: "posts_index.html".to_string(),
                 content_template: "post.html".to_string(),
                 output_naming: None,
+                rss_include: None,
             },
         );
 
@@ -123,6 +124,7 @@ mod tests {
                 syntax_highlighting_theme: "github_dark".to_string(),
                 root_static: HashMap::new(),
                 sitemap_enabled: true,
+                rss_enabled: true,
             },
             content,
             dynamic: HashMap::new(),
@@ -203,6 +205,7 @@ mod tests {
                 index_template: "pages_index.html".to_string(),
                 content_template: "page.html".to_string(),
                 output_naming: None,
+                rss_include: None,
             },
         );
 

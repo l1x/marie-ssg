@@ -64,6 +64,9 @@ pub(crate) struct SiteConfig {
     /// Enable sitemap.xml generation
     #[serde(default = "default_true")]
     pub sitemap_enabled: bool,
+    /// Enable RSS feed generation (feed.xml)
+    #[serde(default = "default_true")]
+    pub rss_enabled: bool,
 }
 
 fn default_true() -> bool {
@@ -88,6 +91,8 @@ pub(crate) struct ContentTypeConfig {
     pub content_template: String,
     #[serde(default)]
     pub output_naming: Option<String>, // Options: "default" or "date"
+    #[serde(default)]
+    pub rss_include: Option<bool>, // Include in RSS feed (default: true if None)
 }
 
 #[cfg(test)]
@@ -296,5 +301,101 @@ sitemap_enabled = false
             !config.site.sitemap_enabled,
             "sitemap_enabled should be false when explicitly set"
         );
+    }
+
+    #[test]
+    fn test_config_rss_enabled_default() {
+        let config = Config::from_str(minimal_config_toml()).unwrap();
+
+        assert!(
+            config.site.rss_enabled,
+            "rss_enabled should default to true"
+        );
+    }
+
+    #[test]
+    fn test_config_rss_disabled() {
+        let toml = r#"
+[site]
+title = "Test Site"
+tagline = "A test tagline"
+domain = "example.com"
+author = "Test Author"
+output_dir = "output"
+content_dir = "content"
+template_dir = "templates"
+static_dir = "static"
+site_index_template = "index.html"
+rss_enabled = false
+"#;
+
+        let config = Config::from_str(toml).unwrap();
+
+        assert!(
+            !config.site.rss_enabled,
+            "rss_enabled should be false when explicitly set"
+        );
+    }
+
+    #[test]
+    fn test_config_rss_include_default() {
+        let toml = r#"
+[site]
+title = "Test Site"
+tagline = "A test tagline"
+domain = "example.com"
+author = "Test Author"
+output_dir = "output"
+content_dir = "content"
+template_dir = "templates"
+static_dir = "static"
+site_index_template = "index.html"
+
+[content.posts]
+index_template = "posts_index.html"
+content_template = "post.html"
+"#;
+
+        let config = Config::from_str(toml).unwrap();
+        let posts = config.content.get("posts").unwrap();
+
+        assert!(
+            posts.rss_include.is_none(),
+            "rss_include should default to None"
+        );
+    }
+
+    #[test]
+    fn test_config_rss_include_explicit() {
+        let toml = r#"
+[site]
+title = "Test Site"
+tagline = "A test tagline"
+domain = "example.com"
+author = "Test Author"
+output_dir = "output"
+content_dir = "content"
+template_dir = "templates"
+static_dir = "static"
+site_index_template = "index.html"
+
+[content.posts]
+index_template = "posts_index.html"
+content_template = "post.html"
+rss_include = true
+
+[content.pages]
+index_template = "pages_index.html"
+content_template = "page.html"
+rss_include = false
+"#;
+
+        let config = Config::from_str(toml).unwrap();
+
+        let posts = config.content.get("posts").unwrap();
+        assert_eq!(posts.rss_include, Some(true));
+
+        let pages = config.content.get("pages").unwrap();
+        assert_eq!(pages.rss_include, Some(false));
     }
 }
