@@ -51,6 +51,7 @@ struct Argz {
 enum SubCommand {
     Build(BuildArgs),
     Watch(WatchArgs),
+    Guide(GuideArgs),
 }
 
 #[derive(FromArgs, Debug)]
@@ -70,6 +71,11 @@ struct WatchArgs {
     #[argh(option, short = 'c', default = "default_config_file()")]
     config_file: String,
 }
+
+#[derive(FromArgs, Debug)]
+#[argh(subcommand, name = "guide")]
+/// Print a guide explaining Marie SSG features and configuration
+struct GuideArgs {}
 
 // Application Logic
 #[derive(Debug)]
@@ -320,6 +326,245 @@ fn watch(_config_file: &str) -> Result<(), RunError> {
     std::process::exit(1);
 }
 
+/// Prints the Marie SSG guide to stdout
+fn print_guide() {
+    print!(
+        r####"# Marie SSG Guide
+
+Marie is a static site generator that converts markdown files with TOML metadata into HTML pages.
+
+## Quick Start
+
+```bash
+marie-ssg build              # Build the site
+marie-ssg build -c prod.toml # Build with custom config
+marie-ssg watch              # Watch and rebuild on changes (macOS)
+marie-ssg guide              # Show this guide
+```
+
+## Project Structure
+
+```
+my-site/
+├── site.toml           # Site configuration
+├── content/            # Markdown content files
+│   ├── blog/
+│   │   ├── hello.md
+│   │   └── hello.meta.toml
+│   └── pages/
+│       ├── about.md
+│       └── about.meta.toml
+├── templates/          # Jinja-style templates
+│   ├── base.html
+│   ├── post.html
+│   └── blog_index.html
+├── static/             # Static assets (CSS, images, fonts)
+│   ├── css/
+│   └── images/
+└── output/             # Generated site (created by build)
+```
+
+## Configuration (site.toml)
+
+```toml
+[site]
+title = "My Website"
+tagline = "A personal blog"
+domain = "example.com"
+author = "Your Name"
+content_dir = "content"
+output_dir = "output"
+template_dir = "templates"
+static_dir = "static"
+site_index_template = "index.html"
+
+# Optional features (default: true)
+syntax_highlighting_enabled = true
+syntax_highlighting_theme = "github_dark"
+sitemap_enabled = true
+rss_enabled = true
+
+# Files copied to output root (e.g., favicon)
+[site.root_static]
+"favicon.ico" = "favicon.ico"
+"robots.txt" = "robots.txt"
+
+# Content type configurations
+[content.blog]
+index_template = "blog_index.html"
+content_template = "post.html"
+output_naming = "date"      # Prefix output with date (YYYY-MM-DD-slug.html)
+rss_include = true          # Include in RSS feed (default: true)
+
+[content.pages]
+index_template = "pages_index.html"
+content_template = "page.html"
+rss_include = false         # Exclude from RSS feed
+
+# Custom variables for templates
+[dynamic]
+github_url = "https://github.com/user"
+twitter = "@username"
+```
+
+## Content Files
+
+Each markdown file needs a companion `.meta.toml` file:
+
+**content/blog/hello.md:**
+```markdown
+# Hello World
+
+This is my first post.
+
+## Context
+
+This section becomes the excerpt for RSS feeds and index pages.
+
+## Main Content
+
+The rest of your article...
+```
+
+**content/blog/hello.meta.toml:**
+```toml
+title = "Hello World"
+date = "2024-01-15T10:00:00+00:00"  # RFC 3339 format
+author = "Your Name"
+tags = ["intro", "blog"]
+template = "custom.html"             # Optional: override default template
+```
+
+### Metadata Fields
+
+| Field | Required | Description |
+|-------|----------|-------------|
+| title | Yes | Article title |
+| date | Yes | Publication date (RFC 3339: `YYYY-MM-DDTHH:MM:SS+00:00`) |
+| author | Yes | Author name |
+| tags | Yes | Array of tags (can be empty: `[]`) |
+| template | No | Override the content type's default template |
+
+## Templates (Jinja2/Minijinja)
+
+Templates use Jinja2 syntax via the Minijinja library.
+
+### Available Context
+
+**In content templates (`post.html`):**
+- `content` - Rendered HTML content
+- `meta.title`, `meta.date`, `meta.author`, `meta.tags`
+- `config.site.title`, `config.site.author`, etc.
+- `config.dynamic.github_url`, etc.
+
+**In index templates (`blog_index.html`):**
+- `contents` - List of ContentItem for this content type
+- `all_content` - List of all ContentItem across all types
+- `config` - Full site configuration
+
+### ContentItem Properties
+
+```jinja
+{{% for item in contents %}}
+  <h2>{{{{ item.meta.title }}}}</h2>
+  <time>{{{{ item.formatted_date }}}}</time>
+  <p>{{{{ item.excerpt | safe }}}}</p>
+  <a href="/{{{{ item.filename | url }}}}">Read more</a>
+{{% endfor %}}
+```
+
+| Property | Description |
+|----------|-------------|
+| `item.html` | Full rendered HTML content |
+| `item.meta.title` | Article title |
+| `item.meta.date` | Date object |
+| `item.meta.author` | Author name |
+| `item.meta.tags` | List of tags |
+| `item.formatted_date` | Human-readable date (e.g., "January 15, 2024") |
+| `item.filename` | Output path (e.g., `blog/2024-01-15-hello.html`) |
+| `item.content_type` | Content type (e.g., "blog") |
+| `item.excerpt` | HTML excerpt from "## Context" section |
+
+### Filters
+
+- `| safe` - Render HTML without escaping
+- `| url` - URL-encode for href attributes
+- `| datetimeformat("%Y-%m-%d")` - Format dates
+
+### Template Example
+
+```html
+{{% extends "base.html" %}}
+
+{{% block content %}}
+<article>
+  <h1>{{{{ meta.title }}}}</h1>
+  <time>{{{{ meta.date | datetimeformat("%B %d, %Y") }}}}</time>
+  <div class="content">{{{{ content | safe }}}}</div>
+</article>
+{{% endblock %}}
+```
+
+## Features
+
+### Syntax Highlighting
+
+Code blocks with language hints are highlighted automatically.
+
+Supported languages: bash, css, html, javascript, json, python, rust, toml, typescript, yaml
+
+Themes: `github_dark` (default), `monokai`, and others from Autumnus.
+
+### Sitemap Generation
+
+Automatically generates `sitemap.xml` with all pages when `sitemap_enabled = true`.
+
+### RSS Feed Generation
+
+Generates `feed.xml` with RSS 2.0 format when `rss_enabled = true`.
+- Control per content type with `rss_include = true/false`
+- Uses "## Context" section as excerpt
+
+### Watch Mode (macOS)
+
+Automatically rebuilds when files change:
+```bash
+marie-ssg watch
+```
+
+## Output
+
+After build, your site is in the output directory:
+
+```
+output/
+├── index.html          # Site homepage
+├── sitemap.xml         # Sitemap (if enabled)
+├── feed.xml            # RSS feed (if enabled)
+├── favicon.ico         # Root static files
+├── static/             # Copied static assets
+├── blog/
+│   ├── index.html      # Blog index
+│   └── 2024-01-15-hello.html
+└── pages/
+    ├── index.html
+    └── about.html
+```
+
+## Tips
+
+1. **Date prefix**: Use `output_naming = "date"` to prefix files with publication date
+2. **Excerpts**: Add a "## Context" section for RSS/index excerpts
+3. **Custom templates**: Override per-article with `template` in metadata
+4. **Dynamic vars**: Add custom variables in `[dynamic]` for use in templates
+
+---
+Generated by marie-ssg {version}
+"####,
+        version = VERSION
+    );
+}
+
 fn main() {
     // Initialize tracing subscriber with env filter and UTC timestamps
     tracing_subscriber::registry()
@@ -354,6 +599,9 @@ fn main() {
                 error!("{:?}", e);
                 std::process::exit(1);
             }
+        }
+        Some(SubCommand::Guide(_)) => {
+            print_guide();
         }
         None => {
             println!("marie-ssg {}", VERSION);
