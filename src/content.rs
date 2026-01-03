@@ -16,6 +16,9 @@ fn markdown_options(allow_dangerous_html: bool) -> markdown::Options {
     markdown::Options {
         compile: markdown::CompileOptions {
             allow_dangerous_html,
+            // Disable GFM tag filter when dangerous HTML is allowed
+            // (otherwise <style>, <script>, etc. are still escaped)
+            gfm_tagfilter: !allow_dangerous_html,
             ..markdown::CompileOptions::gfm()
         },
         ..markdown::Options::gfm()
