@@ -289,6 +289,7 @@ mod tests {
                 root_static: HashMap::new(),
                 sitemap_enabled: true,
                 rss_enabled: true,
+                allow_dangerous_html: false,
             },
             content: content_types,
             dynamic: HashMap::new(),

@@ -11,6 +11,17 @@ use tracing::error;
 
 use crate::syntax::highlight_html;
 
+/// Creates markdown parsing options with optional dangerous HTML support.
+fn markdown_options(allow_dangerous_html: bool) -> markdown::Options {
+    markdown::Options {
+        compile: markdown::CompileOptions {
+            allow_dangerous_html,
+            ..markdown::CompileOptions::gfm()
+        },
+        ..markdown::Options::gfm()
+    }
+}
+
 /// Represents a complete content piece with metadata and raw markdown data.
 ///
 /// This struct combines the parsed metadata with the actual
@@ -216,7 +227,7 @@ pub(crate) fn load_metadata(markdown_path: &Path) -> Result<ContentMeta, Content
 /// #     },
 /// #     data: "# Hello World\n\n```rust\nfn main() {}\n```".to_string(),
 /// # };
-/// let html = convert_content_with_highlighting(&content, Path::new("test.md"), true, "github_dark");
+/// let html = convert_content_with_highlighting(&content, Path::new("test.md"), true, "github_dark", false);
 /// assert!(html.contains("<h1>Hello World</h1>"));
 /// ```
 pub(crate) fn convert_content_with_highlighting(
@@ -224,9 +235,10 @@ pub(crate) fn convert_content_with_highlighting(
     path: &Path,
     highlighting_enabled: bool,
     theme: &str,
+    allow_dangerous_html: bool,
 ) -> Result<String, ContentError> {
-    // Convert markdown to HTML using Comrak.
-    let html = match markdown::to_html_with_options(&content.data, &markdown::Options::gfm()) {
+    // Convert markdown to HTML
+    let html = match markdown::to_html_with_options(&content.data, &markdown_options(allow_dangerous_html)) {
         Ok(html) => html,
         Err(e) => {
             error!("Markdown parsing failed: {}", e);
@@ -281,11 +293,11 @@ pub(crate) fn convert_content_with_highlighting(
 /// The rest of the content.
 /// "#;
 ///
-/// let excerpt = get_excerpt_html(markdown, "## Summary");
+/// let excerpt = get_excerpt_html(markdown, "## Summary", false);
 /// assert!(excerpt.contains("This is the excerpt text"));
 /// assert!(!excerpt.contains("Main Content"));
 /// ```
-pub(crate) fn get_excerpt_html(markdown: &str, summary_pattern: &str) -> String {
+pub(crate) fn get_excerpt_html(markdown: &str, summary_pattern: &str, allow_dangerous_html: bool) -> String {
     // Find the start of the summary section
     if let Some(start_idx) = markdown.find(summary_pattern) {
         // Ensure we don't panic if summary_pattern is at the end
@@ -305,7 +317,7 @@ pub(crate) fn get_excerpt_html(markdown: &str, summary_pattern: &str) -> String 
         let excerpt_markdown = content_after_summary[..end_idx].trim();
 
         // Convert the excerpt markdown to HTML with better error handling
-        match markdown::to_html_with_options(excerpt_markdown, &markdown::Options::gfm()) {
+        match markdown::to_html_with_options(excerpt_markdown, &markdown_options(allow_dangerous_html)) {
             Ok(html) => html,
             Err(e) => {
                 tracing::warn!("Failed to convert excerpt to HTML: {}", e);
@@ -349,7 +361,7 @@ It can have **bold** and *italic* formatting.
 The rest of the content goes here.
 "#;
 
-        let excerpt = get_excerpt_html(markdown, "## Summary");
+        let excerpt = get_excerpt_html(markdown, "## Summary", false);
         assert!(excerpt.contains("This is the excerpt text"));
         assert!(excerpt.contains("<strong>bold</strong>"));
         assert!(excerpt.contains("<em>italic</em>"));
@@ -365,7 +377,7 @@ Some content without a summary section.
 Just regular content.
 "#;
 
-        let excerpt = get_excerpt_html(markdown, "## Summary");
+        let excerpt = get_excerpt_html(markdown, "## Summary", false);
         assert_eq!(excerpt, "");
     }
 
@@ -376,7 +388,7 @@ Just regular content.
 This is the only content.
 "#;
 
-        let excerpt = get_excerpt_html(markdown, "## Summary");
+        let excerpt = get_excerpt_html(markdown, "## Summary", false);
         assert!(excerpt.contains("This is the only content"));
     }
 
@@ -390,7 +402,7 @@ Excerpt content here.
 This should not be included.
 "#;
 
-        let excerpt = get_excerpt_html(markdown, "## Summary");
+        let excerpt = get_excerpt_html(markdown, "## Summary", false);
         assert!(excerpt.contains("Excerpt content here"));
         assert!(!excerpt.contains("Subheading"));
     }
@@ -405,21 +417,21 @@ Excerpt content.
 Should not be included.
 "#;
 
-        let excerpt = get_excerpt_html(markdown, "## Summary");
+        let excerpt = get_excerpt_html(markdown, "## Summary", false);
         assert!(excerpt.contains("Excerpt content"));
         assert!(!excerpt.contains("Main Heading"));
     }
 
     #[test]
     fn test_get_excerpt_html_empty_input() {
-        let excerpt = get_excerpt_html("", "## Summary");
+        let excerpt = get_excerpt_html("", "## Summary", false);
         assert_eq!(excerpt, "");
     }
 
     #[test]
     fn test_get_excerpt_html_pattern_not_found() {
         let markdown = "Just some regular content without the pattern.";
-        let excerpt = get_excerpt_html(markdown, "## Summary");
+        let excerpt = get_excerpt_html(markdown, "## Summary", false);
         assert_eq!(excerpt, "");
     }
 
@@ -436,6 +448,7 @@ Should not be included.
             Path::new("test.md"),
             true,
             "github_dark",
+            false,
         );
         assert!(result.is_ok());
         let html = result.unwrap();
@@ -458,6 +471,7 @@ Should not be included.
             Path::new("test.md"),
             false,
             "github_dark",
+            false,
         );
         assert!(result.is_ok());
         let html = result.unwrap();
@@ -480,6 +494,7 @@ Should not be included.
             Path::new("test.md"),
             true,
             "github_dark",
+            false,
         );
         // Should still succeed - unknown languages fall back to plain text
         assert!(result.is_ok());
@@ -667,7 +682,7 @@ This is a custom excerpt pattern.
 Main content.
 "#;
 
-        let excerpt = get_excerpt_html(markdown, "<!-- excerpt -->");
+        let excerpt = get_excerpt_html(markdown, "<!-- excerpt -->", false);
         assert!(excerpt.contains("This is a custom excerpt pattern"));
         assert!(!excerpt.contains("Main content"));
     }
@@ -712,7 +727,7 @@ Main content.
 This is the excerpt.
 This continues until the end of the string.
 "#;
-        let excerpt = get_excerpt_html(markdown, "## Summary");
+        let excerpt = get_excerpt_html(markdown, "## Summary", false);
         assert!(excerpt.contains("This is the excerpt"));
         assert!(excerpt.contains("end of the string"));
     }
@@ -720,7 +735,64 @@ This continues until the end of the string.
     #[test]
     fn test_get_excerpt_html_exact_match_end() {
         let markdown = "## Summary";
-        let excerpt = get_excerpt_html(markdown, "## Summary");
+        let excerpt = get_excerpt_html(markdown, "## Summary", false);
         assert_eq!(excerpt, "");
+    }
+
+    #[test]
+    fn test_convert_content_with_dangerous_html_disabled() {
+        let content = Content {
+            meta: create_test_metadata(),
+            data: "# Test\n\n<figure><img src=\"test.jpg\"><figcaption>Caption</figcaption></figure>".to_string(),
+        };
+
+        let result = convert_content_with_highlighting(
+            &content,
+            Path::new("test.md"),
+            false,
+            "github_dark",
+            false, // dangerous HTML disabled
+        );
+        assert!(result.is_ok());
+        let html = result.unwrap();
+        // HTML should be escaped when dangerous HTML is disabled
+        assert!(html.contains("&lt;figure&gt;"));
+    }
+
+    #[test]
+    fn test_convert_content_with_dangerous_html_enabled() {
+        let content = Content {
+            meta: create_test_metadata(),
+            data: "# Test\n\n<figure><img src=\"test.jpg\"><figcaption>Caption</figcaption></figure>".to_string(),
+        };
+
+        let result = convert_content_with_highlighting(
+            &content,
+            Path::new("test.md"),
+            false,
+            "github_dark",
+            true, // dangerous HTML enabled
+        );
+        assert!(result.is_ok());
+        let html = result.unwrap();
+        // HTML should be preserved when dangerous HTML is enabled
+        assert!(html.contains("<figure>"));
+        assert!(html.contains("<figcaption>"));
+    }
+
+    #[test]
+    fn test_get_excerpt_html_with_dangerous_html_disabled() {
+        let markdown = "## Summary\n\n<div class=\"custom\">Custom content</div>";
+        let excerpt = get_excerpt_html(markdown, "## Summary", false);
+        // HTML should be escaped
+        assert!(excerpt.contains("&lt;div"));
+    }
+
+    #[test]
+    fn test_get_excerpt_html_with_dangerous_html_enabled() {
+        let markdown = "## Summary\n\n<div class=\"custom\">Custom content</div>";
+        let excerpt = get_excerpt_html(markdown, "## Summary", true);
+        // HTML should be preserved
+        assert!(excerpt.contains("<div class=\"custom\">"));
     }
 }

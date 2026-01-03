@@ -225,6 +225,7 @@ mod tests {
                 root_static,
                 sitemap_enabled: true,
                 rss_enabled: true,
+                allow_dangerous_html: false,
             },
             content: HashMap::new(),
             dynamic: HashMap::new(),

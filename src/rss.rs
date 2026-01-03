@@ -108,7 +108,7 @@ fn format_item(config: &Config, content: &LoadedContent, base_url: &str) -> Stri
     item.push_str(&format!("      <guid>{}</guid>\n", url));
 
     // Description (excerpt)
-    let excerpt = get_excerpt_html(&content.content.data, "## Context");
+    let excerpt = get_excerpt_html(&content.content.data, "## Context", config.site.allow_dangerous_html);
     if !excerpt.is_empty() {
         item.push_str(&format!(
             "      <description>{}</description>\n",
@@ -206,6 +206,7 @@ mod tests {
                 root_static: HashMap::new(),
                 sitemap_enabled: true,
                 rss_enabled: true,
+                allow_dangerous_html: false,
             },
             content,
             dynamic: HashMap::new(),

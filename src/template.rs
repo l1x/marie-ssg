@@ -65,7 +65,7 @@ fn build_content_item(lc: &crate::LoadedContent, config: &Config) -> ContentItem
         .to_string_lossy()
         .to_string();
 
-    let excerpt = get_excerpt_html(&lc.content.data, "## Context");
+    let excerpt = get_excerpt_html(&lc.content.data, "## Context", config.site.allow_dangerous_html);
 
     ContentItem {
         html: lc.html.clone(),
@@ -159,6 +159,7 @@ mod tests {
                 root_static: HashMap::new(),
                 sitemap_enabled: true,
                 rss_enabled: true,
+                allow_dangerous_html: false,
             },
             content: HashMap::new(),
             dynamic: HashMap::new(),

@@ -67,6 +67,9 @@ pub(crate) struct SiteConfig {
     /// Enable RSS feed generation (feed.xml)
     #[serde(default = "default_true")]
     pub rss_enabled: bool,
+    /// Allow raw HTML in markdown content (security: only enable for trusted content)
+    #[serde(default)]
+    pub allow_dangerous_html: bool,
 }
 
 fn default_true() -> bool {
@@ -397,5 +400,39 @@ rss_include = false
 
         let pages = config.content.get("pages").unwrap();
         assert_eq!(pages.rss_include, Some(false));
+    }
+
+    #[test]
+    fn test_config_allow_dangerous_html_default() {
+        let config = Config::from_str(minimal_config_toml()).unwrap();
+
+        assert!(
+            !config.site.allow_dangerous_html,
+            "allow_dangerous_html should default to false"
+        );
+    }
+
+    #[test]
+    fn test_config_allow_dangerous_html_enabled() {
+        let toml = r#"
+[site]
+title = "Test Site"
+tagline = "A test tagline"
+domain = "example.com"
+author = "Test Author"
+output_dir = "output"
+content_dir = "content"
+template_dir = "templates"
+static_dir = "static"
+site_index_template = "index.html"
+allow_dangerous_html = true
+"#;
+
+        let config = Config::from_str(toml).unwrap();
+
+        assert!(
+            config.site.allow_dangerous_html,
+            "allow_dangerous_html should be true when explicitly set"
+        );
     }
 }

@@ -147,6 +147,7 @@ fn run_build(
                 &file, // Pass reference - no clone needed
                 config.site.syntax_highlighting_enabled,
                 &config.site.syntax_highlighting_theme,
+                config.site.allow_dangerous_html,
             )?;
 
             let mut output_path =
