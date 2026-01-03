@@ -117,7 +117,7 @@ fn run_build(
     config: &Config,
     env: &minijinja::Environment,
 ) -> Result<(), RunError> {
-    debug!("config: {}", config_file);
+    debug!("config::load ← {}", config_file);
 
     // 0. Copy static files first
     //
@@ -126,7 +126,7 @@ fn run_build(
     // 1. Find all markdown files in `config.content_dir`.
     //
     let files = find_markdown_files(&config.site.content_dir);
-    debug!("{:?}", files);
+    debug!("content::scan found {} files", files.len());
 
     // 2. Loading all content
     //
@@ -135,7 +135,7 @@ fn run_build(
     let loaded_contents: Vec<LoadedContent> = files
         .into_par_iter() // Parallel iterator - consumes Vec for owned PathBufs
         .map(|file| -> Result<LoadedContent, RunError> {
-            debug!("← {}", file.display());
+            debug!("content::load ← {}", file.display());
 
             let content_type = get_content_type(&file, &config.site.content_dir);
             let content = load_content(&file)?;
@@ -166,7 +166,7 @@ fn run_build(
         .collect::<Result<Vec<_>, _>>()?; // Collect Results, fail fast on error
 
     info!(
-        "loaded {} files in {:?}",
+        "content::load {} files in {:.2?}",
         loaded_contents.len(),
         start.elapsed()
     );
@@ -175,7 +175,7 @@ fn run_build(
     //
     for loaded in &loaded_contents {
         debug!(
-            "{} → {}",
+            "content::render {} → {}",
             loaded.path.display(),
             loaded.output_path.display()
         );
@@ -194,7 +194,7 @@ fn run_build(
     // 4. Render content type indexes
     //
     for (content_type, v) in config.content.iter() {
-        debug!("{} index → {}", content_type, v.index_template);
+        debug!("index::render {} → {}", content_type, v.index_template);
 
         let filtered: Vec<_> = loaded_contents
             .iter()
@@ -239,7 +239,7 @@ fn run_build(
             &PathBuf::from(&config.site.output_dir).join("sitemap.xml"),
             &sitemap_xml,
         )?;
-        info!("→ sitemap.xml");
+        info!("sitemap::write → sitemap.xml");
     }
 
     // 7. Generate RSS feed (if enabled)
@@ -250,10 +250,10 @@ fn run_build(
             &PathBuf::from(&config.site.output_dir).join("feed.xml"),
             &rss_xml,
         )?;
-        info!("→ feed.xml");
+        info!("rss::write → feed.xml");
     }
 
-    info!("✓ build complete");
+    info!("build::complete ✓");
     Ok(())
 }
 
@@ -269,8 +269,8 @@ fn watch(config_file: &str) -> Result<(), RunError> {
 
     let paths_to_watch = get_paths_to_watch(config_file, &config);
 
-    info!("watching: {:?}", paths_to_watch);
-    info!("press Ctrl+C to stop");
+    info!("watch::start {:?}", paths_to_watch);
+    info!("watch::info press Ctrl+C to stop");
 
     // Initial build (use fresh environment from the start)
     if let Err(e) = build_fresh(config_file) {
@@ -293,11 +293,11 @@ fn watch(config_file: &str) -> Result<(), RunError> {
             Ok(events) => {
                 // Check debounce
                 if last_build.elapsed() < debounce_duration {
-                    debug!("Debouncing, skipping rebuild");
+                    debug!("watch::debounce skipping rebuild");
                     continue;
                 }
 
-                info!("Δ {:?}", events);
+                info!("watch::change {:?}", events);
                 last_build = Instant::now();
 
                 if let Err(e) = build_fresh(config_file) {
