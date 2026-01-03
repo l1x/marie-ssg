@@ -6,7 +6,7 @@ use std::{
     path::{Path, PathBuf},
 };
 use thiserror::Error;
-use tracing::debug;
+use tracing::{debug, info};
 use walkdir::WalkDir;
 
 use crate::{config::Config, error::StaticError};
@@ -68,6 +68,10 @@ pub(crate) fn copy_static_files(config: &Config) -> Result<(), StaticError> {
         source: e,
     })?;
 
+    // Track counts for summary
+    let mut copied_count = 0usize;
+    let mut unchanged_count = 0usize;
+
     // Copy all files recursively, excluding root_static files
     for entry in WalkDir::new(static_dir)
         .into_iter()
@@ -99,6 +103,7 @@ pub(crate) fn copy_static_files(config: &Config) -> Result<(), StaticError> {
         // Skip if file hasn't changed
         if !should_copy_file(source_path, &dest_path) {
             debug!("static::check ✓ {:?}", source_path);
+            unchanged_count += 1;
             continue;
         }
 
@@ -117,23 +122,39 @@ pub(crate) fn copy_static_files(config: &Config) -> Result<(), StaticError> {
         })?;
 
         debug!("static::copy {:?} → {:?}", source_path, dest_path);
+        copied_count += 1;
     }
 
     // Copy root-level static files to output root
-    copy_root_static_files(config)?;
+    let root_copied = copy_root_static_files(config)?;
+    copied_count += root_copied;
+
+    // Log summary at INFO level
+    if copied_count > 0 || unchanged_count > 0 {
+        if unchanged_count > 0 {
+            info!(
+                "static::copy {} copied, {} unchanged",
+                copied_count, unchanged_count
+            );
+        } else {
+            info!("static::copy {} files", copied_count);
+        }
+    }
 
     Ok(())
 }
 
 /// Copies configured root static files to the output directory root.
-fn copy_root_static_files(config: &Config) -> Result<(), StaticError> {
+/// Returns the number of files copied.
+fn copy_root_static_files(config: &Config) -> Result<usize, StaticError> {
     if config.site.root_static.is_empty() {
         debug!("static::root_static none configured");
-        return Ok(());
+        return Ok(0);
     }
 
     let static_dir = PathBuf::from(&config.site.static_dir);
     let output_dir = PathBuf::from(&config.site.output_dir);
+    let mut copied_count = 0usize;
 
     for (output_filename, source_relative_path) in &config.site.root_static {
         let source_path = static_dir.join(source_relative_path);
@@ -171,9 +192,10 @@ fn copy_root_static_files(config: &Config) -> Result<(), StaticError> {
         })?;
 
         debug!("static::copy {:?} → {:?}", source_path, dest_path);
+        copied_count += 1;
     }
 
-    Ok(())
+    Ok(copied_count)
 }
 
 pub(crate) fn write_output_file(output_path: &Path, content: &str) -> Result<(), WriteError> {

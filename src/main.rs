@@ -174,7 +174,7 @@ fn run_build(
     // 3. Write individual pages
     //
     for loaded in &loaded_contents {
-        debug!(
+        info!(
             "content::render {} → {}",
             loaded.path.display(),
             loaded.output_path.display()
@@ -194,7 +194,7 @@ fn run_build(
     // 4. Render content type indexes
     //
     for (content_type, v) in config.content.iter() {
-        debug!("index::render {} → {}", content_type, v.index_template);
+        info!("index::render {} → {}", content_type, v.index_template);
 
         let filtered: Vec<_> = loaded_contents
             .iter()
@@ -226,10 +226,9 @@ fn run_build(
         loaded_contents.iter().collect(),
     )?;
 
-    write_output_file(
-        &PathBuf::from(&config.site.output_dir).join("index.html"),
-        &site_index_rendered,
-    )?;
+    let site_index_path = PathBuf::from(&config.site.output_dir).join("index.html");
+    info!("index::render site → {}", site_index_path.display());
+    write_output_file(&site_index_path, &site_index_rendered)?;
 
     // 6. Generate sitemap.xml (if enabled)
     //
