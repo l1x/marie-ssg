@@ -7,7 +7,7 @@ use std::{
 };
 use thiserror::Error;
 use time::OffsetDateTime;
-use tracing::error;
+use tracing::{debug, error};
 
 use crate::syntax::highlight_html;
 
@@ -151,10 +151,12 @@ pub(crate) fn load_content(path: &PathBuf) -> Result<Content, ContentError> {
     let meta = load_metadata(path)?;
 
     // 2. Read the entire markdown file content into a string.
+    debug!("io::read ← {:?}", path);
     let data = fs::read_to_string(path).map_err(|e| ContentError::Io {
         path: path.clone(),
         source: e,
     })?;
+    debug!("io::read {} bytes", data.len());
 
     Ok(Content { meta, data })
 }
@@ -184,10 +186,12 @@ pub(crate) fn load_content(path: &PathBuf) -> Result<Content, ContentError> {
 pub(crate) fn load_metadata(markdown_path: &Path) -> Result<ContentMeta, ContentError> {
     // hello-world.md" -> "hello-world.meta.toml"
     let meta_path = markdown_path.with_extension("meta.toml");
+    debug!("io::read ← {:?}", meta_path);
     let meta_content = fs::read_to_string(&meta_path).map_err(|e| ContentError::Io {
         path: meta_path.clone(),
         source: e,
     })?;
+    debug!("io::read {} bytes", meta_content.len());
 
     let metadata: ContentMeta =
         toml::from_str(&meta_content).map_err(|e| ContentError::TomlParse {

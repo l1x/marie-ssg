@@ -110,6 +110,7 @@ pub(crate) fn copy_static_files(config: &Config) -> Result<(), StaticError> {
             })?;
         }
 
+        debug!("io::copy {:?} → {:?}", source_path, dest_path);
         fs::copy(source_path, &dest_path).map_err(|e| StaticError::Io {
             path: dest_path.clone(),
             source: e,
@@ -163,6 +164,7 @@ fn copy_root_static_files(config: &Config) -> Result<(), StaticError> {
             })?;
         }
 
+        debug!("io::copy {:?} → {:?}", source_path, dest_path);
         fs::copy(&source_path, &dest_path).map_err(|e| StaticError::Io {
             path: dest_path.clone(),
             source: e,
@@ -175,6 +177,7 @@ fn copy_root_static_files(config: &Config) -> Result<(), StaticError> {
 }
 
 pub(crate) fn write_output_file(output_path: &Path, content: &str) -> Result<(), WriteError> {
+    debug!("io::write → {:?} ({} bytes)", output_path, content.len());
     // Create parent directories if they don't exist
     if let Some(parent) = output_path.parent() {
         fs::create_dir_all(parent).map_err(|e| WriteError::Io {

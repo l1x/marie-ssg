@@ -297,7 +297,9 @@ fn watch(config_file: &str) -> Result<(), RunError> {
                     continue;
                 }
 
-                info!("watch::change {:?}", events);
+                // Log event_id at INFO, full details at DEBUG
+                info!("watch::change event_id: {}", events.event_id);
+                debug!("watch::change {:?}", events);
                 last_build = Instant::now();
 
                 if let Err(e) = build_fresh(config_file) {

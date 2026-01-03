@@ -3,6 +3,7 @@
 use serde::{Deserialize, Serialize};
 use std::{collections::HashMap, fs};
 use thiserror::Error;
+use tracing::debug;
 
 use crate::syntax::DEFAULT_THEME;
 
@@ -22,7 +23,9 @@ pub(crate) struct Config {
 
 impl Config {
     pub fn load_from_file(path: &str) -> Result<Self, ConfigError> {
+        debug!("io::read ← {:?}", path);
         let content = fs::read_to_string(path)?;
+        debug!("io::read {} bytes", content.len());
         Self::from_str(&content)
     }
 
