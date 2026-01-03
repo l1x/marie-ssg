@@ -92,7 +92,7 @@ fn test_cli_runs_successfully() {
 
     run_ssg(temp_site.path())
         .success()
-        .stdout(predicate::str::contains("Process completed successfully"));
+        .stdout(predicate::str::contains("build complete"));
 }
 
 #[test]

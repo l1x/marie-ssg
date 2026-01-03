@@ -6,7 +6,7 @@ use std::{
     path::{Path, PathBuf},
 };
 use thiserror::Error;
-use tracing::{debug, info};
+use tracing::debug;
 use walkdir::WalkDir;
 
 use crate::{config::Config, error::StaticError};
@@ -53,11 +53,11 @@ pub(crate) enum WriteError {
 
 pub(crate) fn copy_static_files(config: &Config) -> Result<(), StaticError> {
     let static_dir = &config.site.static_dir;
-    info!("Processing static directory: {}", static_dir);
+    debug!("static: {}", static_dir);
 
     // Check if static directory exists
     if !PathBuf::from(static_dir).exists() {
-        info!("No static directory found at: {}", static_dir);
+        debug!("no static dir: {}", static_dir);
         return Ok(());
     }
 
@@ -90,7 +90,7 @@ pub(crate) fn copy_static_files(config: &Config) -> Result<(), StaticError> {
             .values()
             .any(|src| src == &*relative_path_str)
         {
-            debug!("Skipping root static file: {:?}", source_path);
+            debug!("= {:?} (root)", source_path);
             continue;
         }
 
@@ -98,7 +98,7 @@ pub(crate) fn copy_static_files(config: &Config) -> Result<(), StaticError> {
 
         // Skip if file hasn't changed
         if !should_copy_file(source_path, &dest_path) {
-            debug!("Skipping unchanged static file: {:?}", source_path);
+            debug!("= {:?}", source_path);
             continue;
         }
 
@@ -115,7 +115,7 @@ pub(crate) fn copy_static_files(config: &Config) -> Result<(), StaticError> {
             source: e,
         })?;
 
-        debug!("Copied static file: {:?} -> {:?}", source_path, dest_path);
+        debug!("{:?} → {:?}", source_path, dest_path);
     }
 
     // Copy root-level static files to output root
@@ -127,7 +127,7 @@ pub(crate) fn copy_static_files(config: &Config) -> Result<(), StaticError> {
 /// Copies configured root static files to the output directory root.
 fn copy_root_static_files(config: &Config) -> Result<(), StaticError> {
     if config.site.root_static.is_empty() {
-        debug!("No root static files configured.");
+        debug!("no root_static configured");
         return Ok(());
     }
 
@@ -151,7 +151,7 @@ fn copy_root_static_files(config: &Config) -> Result<(), StaticError> {
 
         // Skip if file hasn't changed
         if !should_copy_file(&source_path, &dest_path) {
-            debug!("Skipping unchanged root static file: {:?}", source_path);
+            debug!("= {:?}", source_path);
             continue;
         }
 
@@ -168,10 +168,7 @@ fn copy_root_static_files(config: &Config) -> Result<(), StaticError> {
             source: e,
         })?;
 
-        info!(
-            "Copied root static file: {:?} -> {:?}",
-            source_path, dest_path
-        );
+        debug!("{:?} → {:?}", source_path, dest_path);
     }
 
     Ok(())
@@ -192,7 +189,7 @@ pub(crate) fn write_output_file(output_path: &Path, content: &str) -> Result<(),
         source: e,
     })?;
 
-    info!("Wrote output file: {:?}", output_path);
+    debug!("→ {:?}", output_path);
     Ok(())
 }
 
