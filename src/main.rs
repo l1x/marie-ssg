@@ -379,11 +379,12 @@ template_dir = "templates"
 static_dir = "static"
 site_index_template = "index.html"
 
-# Optional features (default: true)
-syntax_highlighting_enabled = true
+# Optional features (defaults shown)
+syntax_highlighting_enabled = true   # Enable code block highlighting
 syntax_highlighting_theme = "github_dark"
-sitemap_enabled = true
-rss_enabled = true
+sitemap_enabled = true               # Generate sitemap.xml
+rss_enabled = true                   # Generate feed.xml
+allow_dangerous_html = false         # Allow raw HTML in markdown (for <figure>, inline SVGs, etc.)
 
 # Files copied to output root (e.g., favicon)
 [site.root_static]
