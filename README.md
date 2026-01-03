@@ -14,7 +14,7 @@
 
 ### Tooling Setup
 
-The project uses **mise** for task management and tool versioning. See `@mise.toml` for the complete task reference.
+The project uses **mise** for task management and tool versioning. See `mise.toml` for the complete task reference.
 
 **Required tools:**
 
@@ -44,6 +44,16 @@ See [examples](examples/)
 See [agents](AGENTS.md)
 
 ## Version History
+
+### v1.0.0 (2026-01-03)
+
+- Added `allow_dangerous_html` config option for raw HTML in markdown (SVG, figure tags, etc.)
+- Improved logging format with `module::function` prefixes for consistency
+- Added symbols for visual scanning: `←` (read), `→` (write), `✓` (unchanged)
+- INFO level now shows each rendered file and index page
+- Added static file copy summary at INFO level
+- Added detailed IO debug logging (`io::read`, `io::write`, `io::copy`)
+- Shortened `watch::change` INFO output to show only event_id
 
 ### v0.9.0 (2025-12-30)
 
