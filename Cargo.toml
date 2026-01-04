@@ -66,7 +66,7 @@ walkdir = { version = "2" }
 assert_cmd = { version = "2" }
 basic-toml = { version = "0" }
 criterion = { version = "0", features = ["html_reports"] }
-html-escape = "0.2"
+html-escape = { version = "0" }
 predicates = { version = "3" }
 scraper = { version = "0" }
 tempfile = { version = "3" }
