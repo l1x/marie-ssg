@@ -84,3 +84,11 @@ run = "bd stats"
 [tasks.show-issue-tree]
 description = "Show dependency tree for an issue (use: mise run issue-tree -- bd-1)"
 run = "bd dep tree"
+
+[tasks.update-prompts]
+description = "Update agent-prompts submodule to latest"
+run = """
+  git submodule update --remote .agent-prompts
+  git add .agent-prompts
+  git commit -m 'Update agent-prompts submodule'
+"""
