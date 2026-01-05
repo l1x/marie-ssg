@@ -1,0 +1,45 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+jobs:
+  build:
+    runs-on: macos-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install mise and tools
+        uses: jdx/mise-action@v2
+
+      - name: Build
+        run: mise run build-prod
+
+      - name: Package
+        run: |
+          tar -czvf marie-ssg-aarch64-apple-darwin.tar.gz \
+            -C target/release marie-ssg
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: marie-ssg-aarch64-apple-darwin
+          path: marie-ssg-aarch64-apple-darwin.tar.gz
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - uses: actions/download-artifact@v4
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            marie-ssg-aarch64-apple-darwin/marie-ssg-aarch64-apple-darwin.tar.gz
