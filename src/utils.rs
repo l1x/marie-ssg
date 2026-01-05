@@ -1,11 +1,173 @@
 // src/utils.rs
 
+use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use time::OffsetDateTime;
 use time::macros::format_description;
 use walkdir::WalkDir;
 
 use crate::config::Config;
+
+/// Converts text to a URL-friendly slug for use in HTML IDs and URL fragments.
+///
+/// The slugification process:
+/// 1. Converts to lowercase
+/// 2. Replaces spaces and underscores with hyphens
+/// 3. Removes all non-alphanumeric characters (except hyphens)
+/// 4. Collapses multiple consecutive hyphens into one
+/// 5. Trims leading/trailing hyphens
+///
+/// # Arguments
+/// * `text` - The text to slugify
+///
+/// # Returns
+/// A URL-friendly slug string
+///
+/// # Examples
+/// ```
+/// use your_crate::slugify;
+///
+/// assert_eq!(slugify("Hello World"), "hello-world");
+/// assert_eq!(slugify("My Section Title!"), "my-section-title");
+/// assert_eq!(slugify("What's New?"), "whats-new");
+/// ```
+pub(crate) fn slugify(text: &str) -> String {
+    let mut result = String::with_capacity(text.len());
+
+    for c in text.chars() {
+        match c {
+            'A'..='Z' => result.push(c.to_ascii_lowercase()),
+            'a'..='z' | '0'..='9' => result.push(c),
+            ' ' | '_' => result.push('-'),
+            '-' => result.push('-'),
+            _ => {} // Skip other characters
+        }
+    }
+
+    // Collapse multiple hyphens and trim
+    let mut collapsed = String::with_capacity(result.len());
+    let mut prev_hyphen = true; // Start true to trim leading hyphens
+
+    for c in result.chars() {
+        if c == '-' {
+            if !prev_hyphen {
+                collapsed.push('-');
+            }
+            prev_hyphen = true;
+        } else {
+            collapsed.push(c);
+            prev_hyphen = false;
+        }
+    }
+
+    // Trim trailing hyphen
+    if collapsed.ends_with('-') {
+        collapsed.pop();
+    }
+
+    collapsed
+}
+
+/// Strips HTML tags from a string, returning only the text content.
+///
+/// This is used to extract plain text from header content that may contain
+/// inline formatting like `<strong>`, `<em>`, `<code>`, etc.
+///
+/// # Arguments
+/// * `html` - The HTML string to strip tags from
+///
+/// # Returns
+/// The text content without HTML tags
+fn strip_html_tags(html: &str) -> String {
+    let mut result = String::with_capacity(html.len());
+    let mut in_tag = false;
+
+    for c in html.chars() {
+        match c {
+            '<' => in_tag = true,
+            '>' => in_tag = false,
+            _ if !in_tag => result.push(c),
+            _ => {}
+        }
+    }
+
+    result
+}
+
+/// Adds anchor links to HTML headers (h1-h6) for URL fragment navigation.
+///
+/// Transforms headers like `<h2>My Section</h2>` into:
+/// `<h2 id="my-section"><a href="#my-section">My Section</a></h2>`
+///
+/// Handles duplicate slugs by appending -1, -2, etc.
+///
+/// # Arguments
+/// * `html` - The HTML content to process
+///
+/// # Returns
+/// The HTML with anchor links added to all headers
+pub(crate) fn add_header_anchors(html: &str) -> String {
+    let mut result = String::with_capacity(html.len() + html.len() / 4);
+    let mut slug_counts: HashMap<String, usize> = HashMap::new();
+    let mut remaining = html;
+
+    while let Some(start_pos) = remaining.find("<h") {
+        // Add everything before this header
+        result.push_str(&remaining[..start_pos]);
+        remaining = &remaining[start_pos..];
+
+        // Check if this is actually a header tag (h1-h6)
+        if remaining.len() < 4 {
+            result.push_str(remaining);
+            break;
+        }
+
+        let level_char = remaining.chars().nth(2);
+        let after_level = remaining.chars().nth(3);
+
+        if let (Some(level @ '1'..='6'), Some(c)) = (level_char, after_level)
+            && (c == '>' || c == ' ')
+        {
+            // Find the closing tag
+            let close_tag = format!("</h{}>", level);
+            if let Some(close_pos) = remaining.find(&close_tag) {
+                // Find the end of opening tag
+                if let Some(open_end) = remaining[..close_pos].find('>') {
+                    let content = &remaining[open_end + 1..close_pos];
+                    let text_content = strip_html_tags(content);
+                    let base_slug = slugify(&text_content);
+
+                    // Handle duplicate slugs
+                    let slug = if let Some(count) = slug_counts.get(&base_slug) {
+                        format!("{}-{}", base_slug, count)
+                    } else {
+                        base_slug.clone()
+                    };
+                    *slug_counts.entry(base_slug).or_insert(0) += 1;
+
+                    // Build the new header with anchor
+                    result.push_str(&format!(
+                        "<h{} id=\"{}\"><a href=\"#{}\">{}</a></h{}>",
+                        level, slug, slug, content, level
+                    ));
+
+                    remaining = &remaining[close_pos + close_tag.len()..];
+                    continue;
+                }
+            }
+        }
+
+        // Not a valid header, just copy the character and continue
+        if let Some(c) = remaining.chars().next() {
+            result.push(c);
+            remaining = &remaining[c.len_utf8()..];
+        }
+    }
+
+    // Add any remaining content
+    result.push_str(remaining);
+    result
+}
 
 /// Extracts the content type from a file path relative to the content directory.
 ///
@@ -290,6 +452,7 @@ mod tests {
                 sitemap_enabled: true,
                 rss_enabled: true,
                 allow_dangerous_html: false,
+                header_uri_fragment: false,
             },
             content: content_types,
             dynamic: HashMap::new(),
@@ -480,5 +643,109 @@ mod tests {
         let result = add_date_prefix(input, &date);
 
         assert_eq!(result, PathBuf::from("2023-01-01-output.html"));
+    }
+
+    #[test]
+    fn test_slugify_basic() {
+        assert_eq!(slugify("Hello World"), "hello-world");
+        assert_eq!(slugify("My Section Title"), "my-section-title");
+    }
+
+    #[test]
+    fn test_slugify_special_characters() {
+        assert_eq!(slugify("What's New?"), "whats-new");
+        assert_eq!(slugify("Hello, World!"), "hello-world");
+        assert_eq!(slugify("C++ Programming"), "c-programming");
+    }
+
+    #[test]
+    fn test_slugify_underscores() {
+        assert_eq!(slugify("hello_world"), "hello-world");
+        assert_eq!(slugify("my_section_title"), "my-section-title");
+    }
+
+    #[test]
+    fn test_slugify_multiple_spaces() {
+        assert_eq!(slugify("Hello   World"), "hello-world");
+        assert_eq!(slugify("  Leading spaces"), "leading-spaces");
+        assert_eq!(slugify("Trailing spaces  "), "trailing-spaces");
+    }
+
+    #[test]
+    fn test_slugify_numbers() {
+        assert_eq!(slugify("Version 2.0"), "version-20");
+        assert_eq!(slugify("123 Test"), "123-test");
+    }
+
+    #[test]
+    fn test_slugify_empty_and_special_only() {
+        assert_eq!(slugify(""), "");
+        assert_eq!(slugify("!!!"), "");
+        assert_eq!(slugify("---"), "");
+    }
+
+    #[test]
+    fn test_add_header_anchors_basic() {
+        let html = "<h1>Hello World</h1>";
+        let result = add_header_anchors(html);
+        assert_eq!(
+            result,
+            "<h1 id=\"hello-world\"><a href=\"#hello-world\">Hello World</a></h1>"
+        );
+    }
+
+    #[test]
+    fn test_add_header_anchors_all_levels() {
+        let html = "<h1>H1</h1><h2>H2</h2><h3>H3</h3><h4>H4</h4><h5>H5</h5><h6>H6</h6>";
+        let result = add_header_anchors(html);
+        assert!(result.contains("<h1 id=\"h1\"><a href=\"#h1\">H1</a></h1>"));
+        assert!(result.contains("<h2 id=\"h2\"><a href=\"#h2\">H2</a></h2>"));
+        assert!(result.contains("<h3 id=\"h3\"><a href=\"#h3\">H3</a></h3>"));
+        assert!(result.contains("<h4 id=\"h4\"><a href=\"#h4\">H4</a></h4>"));
+        assert!(result.contains("<h5 id=\"h5\"><a href=\"#h5\">H5</a></h5>"));
+        assert!(result.contains("<h6 id=\"h6\"><a href=\"#h6\">H6</a></h6>"));
+    }
+
+    #[test]
+    fn test_add_header_anchors_with_inline_formatting() {
+        let html = "<h2><strong>Bold</strong> and <em>italic</em></h2>";
+        let result = add_header_anchors(html);
+        assert_eq!(
+            result,
+            "<h2 id=\"bold-and-italic\"><a href=\"#bold-and-italic\"><strong>Bold</strong> and <em>italic</em></a></h2>"
+        );
+    }
+
+    #[test]
+    fn test_add_header_anchors_duplicate_slugs() {
+        let html = "<h2>Introduction</h2><p>Some text</p><h2>Introduction</h2><p>More text</p><h2>Introduction</h2>";
+        let result = add_header_anchors(html);
+        assert!(result.contains("id=\"introduction\""));
+        assert!(result.contains("id=\"introduction-1\""));
+        assert!(result.contains("id=\"introduction-2\""));
+    }
+
+    #[test]
+    fn test_add_header_anchors_preserves_other_content() {
+        let html = "<p>Before</p><h2>Title</h2><p>After</p>";
+        let result = add_header_anchors(html);
+        assert!(result.contains("<p>Before</p>"));
+        assert!(result.contains("<p>After</p>"));
+        assert!(result.contains("<h2 id=\"title\"><a href=\"#title\">Title</a></h2>"));
+    }
+
+    #[test]
+    fn test_add_header_anchors_no_headers() {
+        let html = "<p>Just a paragraph</p><div>And a div</div>";
+        let result = add_header_anchors(html);
+        assert_eq!(result, html);
+    }
+
+    #[test]
+    fn test_add_header_anchors_html_like_text() {
+        // Ensure we don't match things like <hr> or <head>
+        let html = "<hr><p>Test</p>";
+        let result = add_header_anchors(html);
+        assert_eq!(result, html);
     }
 }

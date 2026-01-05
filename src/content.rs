@@ -10,6 +10,7 @@ use time::OffsetDateTime;
 use tracing::{debug, error};
 
 use crate::syntax::highlight_html;
+use crate::utils::add_header_anchors;
 
 /// Creates markdown parsing options with optional dangerous HTML support.
 fn markdown_options(allow_dangerous_html: bool) -> markdown::Options {
@@ -212,6 +213,8 @@ pub(crate) fn load_metadata(markdown_path: &Path) -> Result<ContentMeta, Content
 /// * `path` - Path to the source file (for error reporting)
 /// * `highlighting_enabled` - Whether to apply syntax highlighting
 /// * `theme` - The theme to use for highlighting (if enabled)
+/// * `allow_dangerous_html` - Whether to allow raw HTML in markdown
+/// * `header_uri_fragment` - Whether to add anchor links to headers
 ///
 /// # Returns
 /// `Result<String, ContentError>` where the string is HTML content.
@@ -234,7 +237,7 @@ pub(crate) fn load_metadata(markdown_path: &Path) -> Result<ContentMeta, Content
 /// #     },
 /// #     data: "# Hello World\n\n```rust\nfn main() {}\n```".to_string(),
 /// # };
-/// let html = convert_content_with_highlighting(&content, Path::new("test.md"), true, "github_dark", false);
+/// let html = convert_content_with_highlighting(&content, Path::new("test.md"), true, "github_dark", false, false);
 /// assert!(html.contains("<h1>Hello World</h1>"));
 /// ```
 pub(crate) fn convert_content_with_highlighting(
@@ -243,9 +246,10 @@ pub(crate) fn convert_content_with_highlighting(
     highlighting_enabled: bool,
     theme: &str,
     allow_dangerous_html: bool,
+    header_uri_fragment: bool,
 ) -> Result<String, ContentError> {
     // Convert markdown to HTML
-    let html = match markdown::to_html_with_options(&content.data, &markdown_options(allow_dangerous_html)) {
+    let mut html = match markdown::to_html_with_options(&content.data, &markdown_options(allow_dangerous_html)) {
         Ok(html) => html,
         Err(e) => {
             error!("Markdown parsing failed: {}", e);
@@ -255,6 +259,11 @@ pub(crate) fn convert_content_with_highlighting(
             });
         }
     };
+
+    // Add header anchor links if enabled
+    if header_uri_fragment {
+        html = add_header_anchors(&html);
+    }
 
     // Apply syntax highlighting if enabled
     if highlighting_enabled {
@@ -456,6 +465,7 @@ Should not be included.
             true,
             "github_dark",
             false,
+            false,
         );
         assert!(result.is_ok());
         let html = result.unwrap();
@@ -479,6 +489,7 @@ Should not be included.
             false,
             "github_dark",
             false,
+            false,
         );
         assert!(result.is_ok());
         let html = result.unwrap();
@@ -501,6 +512,7 @@ Should not be included.
             Path::new("test.md"),
             true,
             "github_dark",
+            false,
             false,
         );
         // Should still succeed - unknown languages fall back to plain text
@@ -759,6 +771,7 @@ This continues until the end of the string.
             false,
             "github_dark",
             false, // dangerous HTML disabled
+            false,
         );
         assert!(result.is_ok());
         let html = result.unwrap();
@@ -779,6 +792,7 @@ This continues until the end of the string.
             false,
             "github_dark",
             true, // dangerous HTML enabled
+            false,
         );
         assert!(result.is_ok());
         let html = result.unwrap();
@@ -801,5 +815,55 @@ This continues until the end of the string.
         let excerpt = get_excerpt_html(markdown, "## Summary", true);
         // HTML should be preserved
         assert!(excerpt.contains("<div class=\"custom\">"));
+    }
+
+    #[test]
+    fn test_convert_content_with_header_uri_fragment_enabled() {
+        let content = Content {
+            meta: create_test_metadata(),
+            data: "# Main Title\n\nSome text.\n\n## Section One\n\nMore text.\n\n## Section Two\n\nEven more text.".to_string(),
+        };
+
+        let result = convert_content_with_highlighting(
+            &content,
+            Path::new("test.md"),
+            false,
+            "github_dark",
+            false,
+            true, // header_uri_fragment enabled
+        );
+        assert!(result.is_ok());
+        let html = result.unwrap();
+
+        // Headers should have id attributes and anchor links
+        assert!(html.contains("id=\"main-title\""));
+        assert!(html.contains("href=\"#main-title\""));
+        assert!(html.contains("id=\"section-one\""));
+        assert!(html.contains("href=\"#section-one\""));
+        assert!(html.contains("id=\"section-two\""));
+        assert!(html.contains("href=\"#section-two\""));
+    }
+
+    #[test]
+    fn test_convert_content_with_header_uri_fragment_disabled() {
+        let content = Content {
+            meta: create_test_metadata(),
+            data: "# Main Title\n\nSome text.".to_string(),
+        };
+
+        let result = convert_content_with_highlighting(
+            &content,
+            Path::new("test.md"),
+            false,
+            "github_dark",
+            false,
+            false, // header_uri_fragment disabled
+        );
+        assert!(result.is_ok());
+        let html = result.unwrap();
+
+        // Headers should NOT have id attributes when disabled
+        assert!(!html.contains("id=\"main-title\""));
+        assert!(html.contains("<h1>Main Title</h1>"));
     }
 }

@@ -160,6 +160,7 @@ mod tests {
                 sitemap_enabled: true,
                 rss_enabled: true,
                 allow_dangerous_html: false,
+                header_uri_fragment: false,
             },
             content: HashMap::new(),
             dynamic: HashMap::new(),

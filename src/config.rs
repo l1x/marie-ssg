@@ -73,6 +73,9 @@ pub(crate) struct SiteConfig {
     /// Allow raw HTML in markdown content (security: only enable for trusted content)
     #[serde(default)]
     pub allow_dangerous_html: bool,
+    /// Generate anchor links for headers (h1-h6) enabling URL fragment navigation
+    #[serde(default)]
+    pub header_uri_fragment: bool,
 }
 
 fn default_true() -> bool {
@@ -436,6 +439,40 @@ allow_dangerous_html = true
         assert!(
             config.site.allow_dangerous_html,
             "allow_dangerous_html should be true when explicitly set"
+        );
+    }
+
+    #[test]
+    fn test_config_header_uri_fragment_default() {
+        let config = Config::from_str(minimal_config_toml()).unwrap();
+
+        assert!(
+            !config.site.header_uri_fragment,
+            "header_uri_fragment should default to false"
+        );
+    }
+
+    #[test]
+    fn test_config_header_uri_fragment_enabled() {
+        let toml = r#"
+[site]
+title = "Test Site"
+tagline = "A test tagline"
+domain = "example.com"
+author = "Test Author"
+output_dir = "output"
+content_dir = "content"
+template_dir = "templates"
+static_dir = "static"
+site_index_template = "index.html"
+header_uri_fragment = true
+"#;
+
+        let config = Config::from_str(toml).unwrap();
+
+        assert!(
+            config.site.header_uri_fragment,
+            "header_uri_fragment should be true when explicitly set"
         );
     }
 }

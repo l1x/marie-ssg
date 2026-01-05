@@ -145,6 +145,7 @@ fn run_build(
                 config.site.syntax_highlighting_enabled,
                 &config.site.syntax_highlighting_theme,
                 config.site.allow_dangerous_html,
+                config.site.header_uri_fragment,
             )?;
 
             let mut output_path =
@@ -379,6 +380,7 @@ syntax_highlighting_theme = "github_dark"
 sitemap_enabled = true               # Generate sitemap.xml
 rss_enabled = true                   # Generate feed.xml
 allow_dangerous_html = false         # Allow raw HTML in markdown (for <figure>, inline SVGs, etc.)
+header_uri_fragment = false          # Add anchor links to headers for URL fragment navigation
 
 # Files copied to output root (e.g., favicon)
 [site.root_static]
@@ -520,6 +522,17 @@ Automatically generates `sitemap.xml` with all pages when `sitemap_enabled = tru
 Generates `feed.xml` with RSS 2.0 format when `rss_enabled = true`.
 - Control per content type with `rss_include = true/false`
 - Uses "## Context" section as excerpt
+
+### Header Anchor Links
+
+When `header_uri_fragment = true`, headers (h1-h6) get anchor links for URL fragment navigation.
+
+**Before:** `<h2>My Section</h2>`
+**After:** `<h2 id="my-section"><a href="#my-section">My Section</a></h2>`
+
+This enables:
+- Direct linking to sections: `https://example.com/page#my-section`
+- Clickable headers for easy link copying
 
 ### Watch Mode (macOS)
 
