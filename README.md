@@ -45,6 +45,12 @@ See [agents](AGENTS.md)
 
 ## Version History
 
+### v1.1.0 (2026-01-06)
+
+- Added optional `cover` field to ContentMeta for cover image URLs/paths
+- Added `extra` field (HashMap<String, String>) for arbitrary custom metadata
+- Custom fields use serde flatten, so any unknown string field in `.meta.toml` becomes accessible via `meta.extra.fieldname` in templates
+
 ### v1.0.0 (2026-01-03)
 
 - Added `allow_dangerous_html` config option for raw HTML in markdown (SVG, figure tags, etc.)
