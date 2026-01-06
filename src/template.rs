@@ -175,6 +175,8 @@ mod tests {
             author: "Test Author".to_string(),
             tags: vec!["rust".to_string(), "testing".to_string()],
             template: None,
+            cover: None,
+            extra: std::collections::HashMap::new(),
         }
     }
 

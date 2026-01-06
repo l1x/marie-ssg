@@ -142,6 +142,8 @@ mod tests {
             author: "Test Author".to_string(),
             tags: vec![],
             template: None,
+            cover: None,
+            extra: std::collections::HashMap::new(),
         }
     }
 

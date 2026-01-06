@@ -2,6 +2,7 @@
 
 use serde::{Deserialize, Serialize};
 use std::{
+    collections::HashMap,
     fs,
     path::{Path, PathBuf},
 };
@@ -59,6 +60,13 @@ pub(crate) struct ContentMeta {
     /// If not specified, a default template will be used
     #[serde(default)]
     pub template: Option<String>,
+    /// Optional cover image URL/path for this content
+    #[serde(default)]
+    pub cover: Option<String>,
+    /// Additional custom string fields not covered by the standard schema
+    /// These are flattened from the TOML, so any unknown string field becomes accessible
+    #[serde(default, flatten)]
+    pub extra: HashMap<String, String>,
 }
 
 /// Processed content item ready for template rendering and output.
@@ -361,6 +369,8 @@ mod tests {
             author: "Test Author".to_string(),
             tags: vec!["rust".to_string(), "testing".to_string()],
             template: Some("custom.html".to_string()),
+            cover: Some("/images/test-cover.jpg".to_string()),
+            extra: HashMap::new(),
         }
     }
 
@@ -687,6 +697,70 @@ Should not be included.
         // Verify date was parsed
         let expected_date = datetime!(2023-12-15 10:30:00 +5); // UTC+5
         assert_eq!(meta.date, expected_date);
+    }
+
+    #[test]
+    fn test_content_meta_with_cover() {
+        let meta_content = r#"
+    title = "Test Post"
+    date = "2023-12-15T10:30:00+05:00"
+    author = "Test Author"
+    tags = ["rust"]
+    cover = "/images/hero.jpg"
+    "#;
+
+        let meta: ContentMeta = toml::from_str(meta_content).unwrap();
+        assert_eq!(meta.cover, Some("/images/hero.jpg".to_string()));
+    }
+
+    #[test]
+    fn test_content_meta_without_cover() {
+        let meta_content = r#"
+    title = "Test Post"
+    date = "2023-12-15T10:30:00+05:00"
+    author = "Test Author"
+    tags = ["rust"]
+    "#;
+
+        let meta: ContentMeta = toml::from_str(meta_content).unwrap();
+        assert_eq!(meta.cover, None);
+    }
+
+    #[test]
+    fn test_content_meta_with_extra_fields() {
+        let meta_content = r#"
+    title = "Test Post"
+    date = "2023-12-15T10:30:00+05:00"
+    author = "Test Author"
+    tags = ["rust"]
+    custom_field = "custom value"
+    another_field = "another value"
+    "#;
+
+        let meta: ContentMeta = toml::from_str(meta_content).unwrap();
+        assert_eq!(meta.extra.get("custom_field"), Some(&"custom value".to_string()));
+        assert_eq!(meta.extra.get("another_field"), Some(&"another value".to_string()));
+    }
+
+    #[test]
+    fn test_content_meta_with_cover_and_extra_fields() {
+        let meta_content = r#"
+    title = "Test Post"
+    date = "2023-12-15T10:30:00+05:00"
+    author = "Test Author"
+    tags = ["rust"]
+    cover = "/images/cover.png"
+    subtitle = "A great subtitle"
+    category = "tutorials"
+    "#;
+
+        let meta: ContentMeta = toml::from_str(meta_content).unwrap();
+        assert_eq!(meta.cover, Some("/images/cover.png".to_string()));
+        assert_eq!(meta.extra.get("subtitle"), Some(&"A great subtitle".to_string()));
+        assert_eq!(meta.extra.get("category"), Some(&"tutorials".to_string()));
+        // Ensure known fields are not in extra
+        assert_eq!(meta.extra.get("title"), None);
+        assert_eq!(meta.extra.get("cover"), None);
     }
 
     #[test]
