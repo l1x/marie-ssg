@@ -65,6 +65,16 @@ See [agents](AGENTS.md)
 
 ## Version History
 
+### v1.2.0 (unreleased)
+
+- Added `clean_urls` config option for SEO-friendly URL structure
+  - Outputs `content-type/slug/index.html` instead of `content-type/slug.html`
+  - URLs become `/articles/my-post/` instead of `/articles/my-post.html`
+  - Date prefixes are stripped from slugs (kept in metadata for sorting)
+  - Sitemap and RSS feed URLs updated accordingly
+- Updated examples with all available configuration options
+- Updated CLAUDE.md/AGENTS.md with complete configuration reference
+
 ### v1.1.0 (2026-01-06)
 
 - Added optional `cover` field to ContentMeta for cover image URLs/paths
