@@ -1,0 +1,238 @@
+// src/build.rs
+
+use rayon::iter::{IntoParallelIterator, ParallelIterator};
+use std::path::PathBuf;
+use tracing::{debug, info};
+
+use crate::config::Config;
+use crate::content::{Content, convert_content_with_highlighting, load_content};
+use crate::error::RunError;
+use crate::output::{copy_static_files, write_output_file};
+use crate::template::{
+    create_environment, init_environment, render_html, render_index_from_loaded,
+};
+use crate::utils::{
+    add_date_prefix, find_markdown_files, get_clean_output_path, get_content_type,
+    get_content_type_template, get_output_path,
+};
+use crate::{rss, sitemap};
+
+/// Loaded content ready for rendering
+#[derive(Debug)]
+pub(crate) struct LoadedContent {
+    pub(crate) path: PathBuf,
+    pub(crate) content: Content,
+    pub(crate) html: String,
+    pub(crate) content_type: String,
+    pub(crate) output_path: PathBuf,
+}
+
+/// The main entry point for the application logic (uses cached templates).
+pub(crate) fn build(config_file: &str) -> Result<(), RunError> {
+    let config = Config::load_from_file(config_file)?;
+    let env = init_environment(&config.site.template_dir);
+    run_build(config_file, &config, env)
+}
+
+/// Build with a fresh template environment (for watch mode).
+pub(crate) fn build_fresh(config_file: &str) -> Result<(), RunError> {
+    let config = Config::load_from_file(config_file)?;
+    let env = create_environment(&config.site.template_dir);
+    run_build(config_file, &config, &env)
+}
+
+/// Get the list of file paths/directories to watch for changes.
+pub(crate) fn get_paths_to_watch(config_file: &str, config: &Config) -> Vec<String> {
+    vec![
+        config_file.to_string(),
+        config.site.content_dir.clone(),
+        config.site.template_dir.clone(),
+        config.site.static_dir.clone(),
+    ]
+}
+
+/// Core build logic that accepts a template environment.
+fn run_build(
+    config_file: &str,
+    config: &Config,
+    env: &minijinja::Environment,
+) -> Result<(), RunError> {
+    debug!("config::load ← {}", config_file);
+
+    // 0. Copy static files first
+    //
+    copy_static_files(config)?;
+
+    // 1. Find all markdown files in `config.content_dir`.
+    //
+    let files = find_markdown_files(&config.site.content_dir);
+    debug!("content::scan found {} files", files.len());
+
+    // 2. Loading all content
+    //
+    let start = std::time::Instant::now();
+
+    let loaded_contents: Vec<LoadedContent> = files
+        .into_par_iter() // Parallel iterator - consumes Vec for owned PathBufs
+        .map(|file| -> Result<LoadedContent, RunError> {
+            debug!("content::load ← {}", file.display());
+
+            let content_type = get_content_type(&file, &config.site.content_dir);
+            let content = load_content(&file)?;
+            let html = convert_content_with_highlighting(
+                &content,
+                &file, // Pass reference - no clone needed
+                config.site.syntax_highlighting_enabled,
+                &config.site.syntax_highlighting_theme,
+                config.site.allow_dangerous_html,
+                config.site.header_uri_fragment,
+            )?;
+
+            // Determine output path based on clean_urls setting
+            let output_path = if config.site.clean_urls {
+                // Clean URLs: content-type/slug/index.html (date stripped from slug)
+                get_clean_output_path(&file, &config.site.content_dir, &config.site.output_dir)
+            } else {
+                // Legacy: content-type/slug.html with optional date prefix
+                let mut path =
+                    get_output_path(&file, &config.site.content_dir, &config.site.output_dir);
+                if let Some(ct_config) = config.content.get(&content_type)
+                    && ct_config.output_naming.as_deref() == Some("date")
+                {
+                    path = add_date_prefix(path, &content.meta.date);
+                }
+                path
+            };
+
+            Ok(LoadedContent {
+                path: file, // Move owned PathBuf - no clone needed
+                content,
+                html,
+                content_type,
+                output_path,
+            })
+        })
+        .collect::<Result<Vec<_>, _>>()?; // Collect Results, fail fast on error
+
+    info!(
+        "content::load {} files in {:.2?}",
+        loaded_contents.len(),
+        start.elapsed()
+    );
+
+    // 3. Write individual pages
+    //
+    for loaded in &loaded_contents {
+        info!(
+            "content::render {} → {}",
+            loaded.path.display(),
+            loaded.output_path.display()
+        );
+
+        let content_template = get_content_type_template(config, &loaded.content_type);
+        let rendered = render_html(
+            env,
+            &loaded.html,
+            &loaded.content.meta,
+            config,
+            &content_template,
+        )?;
+        write_output_file(&loaded.output_path, &rendered)?;
+    }
+
+    // 4. Render content type indexes
+    //
+    for (content_type, v) in config.content.iter() {
+        info!("index::render {} → {}", content_type, v.index_template);
+
+        let filtered: Vec<_> = loaded_contents
+            .iter()
+            .filter(|lc| &lc.content_type == content_type)
+            .collect();
+
+        let index_rendered = render_index_from_loaded(
+            env,
+            config,
+            &v.index_template,
+            filtered,
+            loaded_contents.iter().collect(),
+        )?;
+
+        let output_path = PathBuf::from(&config.site.output_dir)
+            .join(content_type)
+            .join("index.html");
+
+        write_output_file(&output_path, &index_rendered)?;
+    }
+
+    // 5. Render site index
+    //
+    let site_index_rendered = render_index_from_loaded(
+        env,
+        config,
+        &config.site.site_index_template,
+        loaded_contents.iter().collect(),
+        loaded_contents.iter().collect(),
+    )?;
+
+    let site_index_path = PathBuf::from(&config.site.output_dir).join("index.html");
+    info!("index::render site → {}", site_index_path.display());
+    write_output_file(&site_index_path, &site_index_rendered)?;
+
+    // 6. Generate sitemap.xml (if enabled)
+    //
+    if config.site.sitemap_enabled {
+        let sitemap_xml = sitemap::generate_sitemap(config, &loaded_contents);
+        write_output_file(
+            &PathBuf::from(&config.site.output_dir).join("sitemap.xml"),
+            &sitemap_xml,
+        )?;
+        info!("sitemap::write → sitemap.xml");
+    }
+
+    // 7. Generate RSS feed (if enabled)
+    //
+    if config.site.rss_enabled {
+        let rss_xml = rss::generate_rss(config, &loaded_contents);
+        write_output_file(
+            &PathBuf::from(&config.site.output_dir).join("feed.xml"),
+            &rss_xml,
+        )?;
+        info!("rss::write → feed.xml");
+    }
+
+    info!("build::complete ✓");
+    Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_get_paths_to_watch() {
+        let toml = r#"
+[site]
+title = "Test Site"
+tagline = "A test tagline"
+domain = "example.com"
+author = "Test Author"
+output_dir = "output"
+content_dir = "content"
+template_dir = "templates"
+static_dir = "static"
+site_index_template = "index.html"
+"#;
+        let config = crate::config::Config::from_str(toml).unwrap();
+        let config_file = "site.toml";
+
+        let paths = get_paths_to_watch(config_file, &config);
+
+        // Should contain 4 paths: config file + 3 dirs
+        assert_eq!(paths.len(), 4);
+        assert!(paths.contains(&"site.toml".to_string()));
+        assert!(paths.contains(&"content".to_string()));
+        assert!(paths.contains(&"templates".to_string()));
+        assert!(paths.contains(&"static".to_string()));
+    }
+}
