@@ -100,12 +100,13 @@ See [agents](AGENTS.md)
   - Sitemap and RSS feed URLs updated accordingly
 - Updated examples with all available configuration options
 - Updated CLAUDE.md/AGENTS.md with complete configuration reference
+- Fixed `meta.extra` field access in templates (requires `[extra]` section in metadata)
 
 ### v1.1.0 (2026-01-06)
 
 - Added optional `cover` field to ContentMeta for cover image URLs/paths
-- Added `extra` field (HashMap<String, String>) for arbitrary custom metadata
-- Custom fields use serde flatten, so any unknown string field in `.meta.toml` becomes accessible via `meta.extra.fieldname` in templates
+- Added `extra` field for arbitrary custom metadata via `[extra]` section in `.meta.toml`
+- Access custom fields in templates via `meta.extra.fieldname`
 
 ### v1.0.0 (2026-01-03)
 
