@@ -389,6 +389,7 @@ sitemap_enabled = true               # Generate sitemap.xml
 rss_enabled = true                   # Generate feed.xml
 allow_dangerous_html = false         # Allow raw HTML in markdown (for <figure>, inline SVGs, etc.)
 header_uri_fragment = false          # Add anchor links to headers for URL fragment navigation
+clean_urls = false                   # Output as slug/index.html for SEO-friendly URLs (/blog/post/ instead of /blog/post.html)
 
 # Files copied to output root (e.g., favicon)
 [site.root_static]
@@ -450,6 +451,8 @@ template = "custom.html"             # Optional: override default template
 | author   | Yes      | Author name                                              |
 | tags     | Yes      | Array of tags (can be empty: `[]`)                       |
 | template | No       | Override the content type's default template             |
+| cover    | No       | Cover image URL/path for social sharing                  |
+| [extra]  | No       | Custom key-value fields (access via `meta.extra.key`)    |
 
 ## Templates (Jinja2/Minijinja)
 
@@ -486,8 +489,10 @@ Templates use Jinja2 syntax via the Minijinja library.
 | `item.meta.date`      | Date object                                        |
 | `item.meta.author`    | Author name                                        |
 | `item.meta.tags`      | List of tags                                       |
+| `item.meta.cover`     | Cover image URL/path (if set)                      |
+| `item.meta.extra.*`   | Custom fields (e.g., `item.meta.extra.reading_time`) |
 | `item.formatted_date` | Human-readable date (e.g., "January 15, 2024")     |
-| `item.filename`       | Output path (e.g., `blog/2024-01-15-hello.html`)   |
+| `item.filename`       | Output path (e.g., `blog/hello/` with clean_urls)  |
 | `item.content_type`   | Content type (e.g., "blog")                        |
 | `item.excerpt`        | HTML excerpt from "## Context" section             |
 
@@ -541,6 +546,24 @@ When `header_uri_fragment = true`, headers (h1-h6) get anchor links for URL frag
 This enables:
 - Direct linking to sections: `https://example.com/page#my-section`
 - Clickable headers for easy link copying
+
+### Clean URLs
+
+When `clean_urls = true`, content is output with SEO-friendly directory structure:
+
+**Before (clean_urls = false):**
+- `content/blog/2024-01-15-hello.md` → `output/blog/2024-01-15-hello.html`
+- URL: `/blog/2024-01-15-hello.html`
+
+**After (clean_urls = true):**
+- `content/blog/2024-01-15-hello.md` → `output/blog/hello/index.html`
+- URL: `/blog/hello/`
+
+Benefits:
+- Cleaner, more shareable URLs
+- Date prefix stripped from URL (kept in metadata for sorting)
+- Trailing slash convention (modern SSG standard)
+- Sitemap and RSS URLs automatically updated
 
 ### Watch Mode (macOS)
 
