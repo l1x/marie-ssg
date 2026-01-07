@@ -55,6 +55,32 @@ mise run audit        # Security audit on dependencies
 mise run check-deps   # Run audit + find unused dependencies
 ```
 
+## Configuration
+
+See [examples/site.toml](examples/site.toml) for a complete configuration reference.
+
+### Key Options
+
+| Option | Type | Default | Description |
+|--------|------|---------|-------------|
+| `clean_urls` | bool | `false` | Output as `slug/index.html` for SEO-friendly URLs |
+| `rss_enabled` | bool | `true` | Generate RSS feed (feed.xml) |
+| `sitemap_enabled` | bool | `true` | Generate sitemap.xml |
+| `header_uri_fragment` | bool | `false` | Add anchor links to headers |
+| `allow_dangerous_html` | bool | `false` | Allow raw HTML in markdown |
+| `syntax_highlighting_enabled` | bool | `true` | Enable code syntax highlighting |
+
+### Clean URLs Example
+
+```toml
+[site]
+clean_urls = true  # /blog/my-post/ instead of /blog/my-post.html
+```
+
+When enabled:
+- `content/blog/2025-01-07-my-post.md` → `output/blog/my-post/index.html`
+- URL: `/blog/my-post/` (date prefix stripped, trailing slash)
+
 ## Examples
 
 See [examples](examples/)
