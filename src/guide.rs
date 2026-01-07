@@ -112,6 +112,11 @@ date = "2024-01-15T10:00:00+00:00"  # RFC 3339 format
 author = "Your Name"
 tags = ["intro", "blog"]
 template = "custom.html"             # Optional: override default template
+cover = "/images/hello-cover.jpg"    # Optional: cover image for social sharing
+
+[extra]
+reading_time = "5 min"               # Custom fields go in [extra] section
+category = "tutorials"
 ```
 
 ### Metadata Fields

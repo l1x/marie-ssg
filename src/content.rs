@@ -63,9 +63,9 @@ pub(crate) struct ContentMeta {
     /// Optional cover image URL/path for this content
     #[serde(default)]
     pub cover: Option<String>,
-    /// Additional custom string fields not covered by the standard schema
-    /// These are flattened from the TOML, so any unknown string field becomes accessible
-    #[serde(default, flatten)]
+    /// Additional custom fields defined in [extra] section of metadata
+    /// Access in templates via meta.extra.field_name
+    #[serde(default)]
     pub extra: HashMap<String, String>,
 }
 
@@ -733,6 +733,8 @@ Should not be included.
     date = "2023-12-15T10:30:00+05:00"
     author = "Test Author"
     tags = ["rust"]
+
+    [extra]
     custom_field = "custom value"
     another_field = "another value"
     "#;
@@ -750,6 +752,8 @@ Should not be included.
     author = "Test Author"
     tags = ["rust"]
     cover = "/images/cover.png"
+
+    [extra]
     subtitle = "A great subtitle"
     category = "tutorials"
     "#;
