@@ -249,6 +249,7 @@ mod tests {
                 rss_enabled: true,
                 allow_dangerous_html: false,
                 header_uri_fragment: false,
+                clean_urls: false,
             },
             content: HashMap::new(),
             dynamic: HashMap::new(),

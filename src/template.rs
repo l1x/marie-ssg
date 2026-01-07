@@ -58,12 +58,23 @@ pub(crate) fn create_environment(template_dir: &str) -> Environment<'static> {
 /// This helper extracts the common logic for building template-ready content items,
 /// computing the filename, excerpt, and formatted date.
 fn build_content_item(lc: &crate::LoadedContent, config: &Config) -> ContentItem {
-    let filename = lc
+    let raw_filename = lc
         .output_path
         .strip_prefix(&config.site.output_dir)
         .unwrap_or(&lc.output_path)
         .to_string_lossy()
         .to_string();
+
+    // For clean URLs, convert "content-type/slug/index.html" to "content-type/slug/"
+    let filename = if config.site.clean_urls {
+        raw_filename
+            .strip_suffix("/index.html")
+            .or_else(|| raw_filename.strip_suffix("\\index.html")) // Windows support
+            .map(|s| format!("{}/", s))
+            .unwrap_or(raw_filename)
+    } else {
+        raw_filename
+    };
 
     let excerpt = get_excerpt_html(&lc.content.data, "## Context", config.site.allow_dangerous_html);
 
@@ -161,6 +172,7 @@ mod tests {
                 rss_enabled: true,
                 allow_dangerous_html: false,
                 header_uri_fragment: false,
+                clean_urls: false,
             },
             content: HashMap::new(),
             dynamic: HashMap::new(),

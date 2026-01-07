@@ -13,17 +13,78 @@ This document provides essential context for AI agents working on the Marie SSG 
 - Jinja-style templating with Minijinja
 - Syntax highlighting with Autumnus (10 languages)
 - Watch mode support on macOS
+- RSS feed and sitemap generation
+- Clean URL support (`/slug/` instead of `/slug.html`)
+
+## Configuration Options
+
+### Site Config (`[site]`)
+
+| Option | Type | Default | Description |
+|--------|------|---------|-------------|
+| `title` | string | required | Site title |
+| `tagline` | string | required | Site tagline/description |
+| `domain` | string | required | Domain for sitemap/RSS URLs |
+| `author` | string | required | Default author name |
+| `content_dir` | string | required | Directory containing markdown files |
+| `template_dir` | string | required | Directory containing Jinja templates |
+| `static_dir` | string | required | Directory containing static assets |
+| `output_dir` | string | required | Directory for generated output |
+| `site_index_template` | string | required | Template for homepage |
+| `syntax_highlighting_enabled` | bool | `true` | Enable code syntax highlighting |
+| `syntax_highlighting_theme` | string | `"github_dark"` | Syntax highlighting theme |
+| `sitemap_enabled` | bool | `true` | Generate sitemap.xml |
+| `rss_enabled` | bool | `true` | Generate RSS feed (feed.xml) |
+| `allow_dangerous_html` | bool | `false` | Allow raw HTML in markdown |
+| `header_uri_fragment` | bool | `false` | Add anchor links to headers |
+| `clean_urls` | bool | `false` | Output as `slug/index.html` instead of `slug.html` |
+
+### Content Type Config (`[content.<type>]`)
+
+| Option | Type | Default | Description |
+|--------|------|---------|-------------|
+| `index_template` | string | required | Template for content type index |
+| `content_template` | string | required | Template for individual items |
+| `output_naming` | string | `"default"` | `"default"` or `"date"` (YYYY-MM-DD prefix) |
+| `rss_include` | bool | `true` | Include this type in RSS feed |
+
+### Content Metadata (TOML frontmatter)
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `title` | string | yes | Content title |
+| `date` | string | yes | RFC3339 datetime |
+| `author` | string | yes | Author name |
+| `tags` | array | no | List of tags |
+| `template` | string | no | Override default template |
+| `cover` | string | no | Cover image URL/path |
+| `extra.*` | string | no | Custom fields via `[extra]` section |
 
 ## Development Environment
+
+### Prerequisites
+
+Install [mise](https://mise.jdx.dev/) for tool version management:
+
+```bash
+# macOS (Homebrew)
+brew install mise
+
+# Or using the install script
+curl https://mise.run | sh
+
+# Install project tools
+mise install
+```
 
 ### Tooling Setup
 
 The project uses **mise** for task management and tool versioning. See `@mise.toml` for the complete task reference.
 
-**Required tools:**
+**Required tools (installed by mise):**
 
-- Rust 1.90.0 (managed by mise)
-- Python 3.13.10 (managed by mise)
+- Rust 1.90.0
+- Python 3.13.10
 
 **Key mise tasks:**
 
@@ -127,19 +188,20 @@ marie-ssg/
 │   ├── content.rs         # Content parsing and metadata
 │   ├── template.rs        # Template rendering
 │   ├── syntax.rs          # Syntax highlighting
-│   ├── utils.rs           # Utility functions
+│   ├── utils.rs           # Utility functions (slugify, paths, etc.)
 │   ├── sitemap.rs         # Sitemap generation
+│   ├── rss.rs             # RSS feed generation
 │   ├── output.rs          # File output
 │   └── error.rs           # Error types
 ├── tests/                  # Integration tests
 ├── benches/                # Performance benchmarks
 ├── docs/                   # Documentation
 │   └── prompts/           # AI agent prompts
-├── examples/               # Example sites
+├── examples/               # Example config and content
 ├── Cargo.toml             # Rust dependencies
 ├── mise.toml              # Task definitions and tool versions
 ├── README.md              # User-facing documentation
-└── AGENTS.md              # This file
+└── CLAUDE.md              # This file (agent context)
 ```
 
 ## Key Dependencies

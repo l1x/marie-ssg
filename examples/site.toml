@@ -26,12 +26,28 @@ site_index_template = "index.html"
 # Enable syntax highlighting for code blocks in markdown
 syntax_highlighting_enabled = true
 # Choose a theme (default: "base16-ocean.dark")
-# Available themes depend on the implementation, common ones often include:
-# "base16-ocean.dark", "base16-mocha.dark", "base16-eighties.dark", "github", etc.
-syntax_highlighting_theme = "base16-ocean.dark"
+# Available themes: "github_dark", "base16-ocean.dark", "monokai", etc.
+syntax_highlighting_theme = "github_dark"
 
 # Generate sitemap.xml at the root of the output directory
 sitemap_enabled = true
+
+# Generate RSS feed (feed.xml) at the root of the output directory
+rss_enabled = true
+
+# Allow raw HTML in markdown content
+# WARNING: Only enable for trusted content sources (security risk)
+allow_dangerous_html = false
+
+# Generate anchor links for headers (h1-h6) enabling URL fragment navigation
+# When enabled, headers become clickable with #slug URLs
+header_uri_fragment = true
+
+# Enable clean URL structure
+# When true: outputs content-type/slug/index.html (URL: /content-type/slug/)
+# When false: outputs content-type/slug.html (URL: /content-type/slug.html)
+# Date prefixes are stripped from slugs when enabled
+clean_urls = true
 
 # Root Static Files
 # Map filenames at the root of the site to their source paths in the static directory
@@ -39,6 +55,7 @@ sitemap_enabled = true
 [site.root_static]
 "favicon.ico" = "favicon.ico"
 "robots.txt" = "robots.txt"
+"apple-touch-icon.png" = "icons/apple-touch-icon.png"
 
 # Content Types
 # Define different types of content (e.g., blog posts, pages, projects)
@@ -50,20 +67,28 @@ index_template = "blog_index.html"
 # Template for individual items (e.g., /blog/my-post.html)
 content_template = "post.html"
 # Output naming strategy: "default" (filename) or "date" (YYYY-MM-DD-filename)
+# Note: When clean_urls=true, date prefix is stripped from URL slugs
 output_naming = "date"
+# Include this content type in RSS feed (default: true)
+rss_include = true
 
 [content.pages]
 index_template = "page_index.html"
 content_template = "page.html"
-# Default output naming is just the filename
+# Exclude static pages from RSS feed
+rss_include = false
 
 [content.projects]
 index_template = "projects_index.html"
 content_template = "project.html"
+# Include projects in RSS feed
+rss_include = true
 
 # Dynamic Variables
-# Arbitrary key-value pairs available in all templates under the `site.dynamic` namespace
+# Arbitrary key-value pairs available in all templates under the `config.dynamic` namespace
+# Usage in templates: {{ config.dynamic.github_url }}
 [dynamic]
 github_url = "https://github.com/janedoe"
 twitter_handle = "@janedoe"
+linkedin_url = "https://linkedin.com/in/janedoe"
 deployment_env = "production"

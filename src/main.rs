@@ -15,8 +15,8 @@ use crate::template::{
     create_environment, init_environment, render_html, render_index_from_loaded,
 };
 use crate::utils::{
-    add_date_prefix, find_markdown_files, get_content_type, get_content_type_template,
-    get_output_path,
+    add_date_prefix, find_markdown_files, get_clean_output_path, get_content_type,
+    get_content_type_template, get_output_path,
 };
 
 mod config;
@@ -148,13 +148,21 @@ fn run_build(
                 config.site.header_uri_fragment,
             )?;
 
-            let mut output_path =
-                get_output_path(&file, &config.site.content_dir, &config.site.output_dir);
-            if let Some(ct_config) = config.content.get(&content_type)
-                && ct_config.output_naming.as_deref() == Some("date")
-            {
-                output_path = add_date_prefix(output_path, &content.meta.date);
-            }
+            // Determine output path based on clean_urls setting
+            let output_path = if config.site.clean_urls {
+                // Clean URLs: content-type/slug/index.html (date stripped from slug)
+                get_clean_output_path(&file, &config.site.content_dir, &config.site.output_dir)
+            } else {
+                // Legacy: content-type/slug.html with optional date prefix
+                let mut path =
+                    get_output_path(&file, &config.site.content_dir, &config.site.output_dir);
+                if let Some(ct_config) = config.content.get(&content_type)
+                    && ct_config.output_naming.as_deref() == Some("date")
+                {
+                    path = add_date_prefix(path, &content.meta.date);
+                }
+                path
+            };
 
             Ok(LoadedContent {
                 path: file, // Move owned PathBuf - no clone needed

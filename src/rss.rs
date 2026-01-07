@@ -102,7 +102,22 @@ fn format_item(config: &Config, content: &LoadedContent, base_url: &str) -> Stri
         .output_path
         .strip_prefix(&config.site.output_dir)
         .unwrap_or(&content.output_path);
-    let url = format!("{}/{}", base_url, path_to_url(relative_path));
+    let raw_path = path_to_url(relative_path);
+
+    // For clean URLs, convert "slug/index.html" to "slug/"
+    let url = if config.site.clean_urls {
+        format!(
+            "{}/{}",
+            base_url,
+            raw_path
+                .strip_suffix("/index.html")
+                .or_else(|| raw_path.strip_suffix("\\index.html"))
+                .map(|s| format!("{}/", s))
+                .unwrap_or(raw_path)
+        )
+    } else {
+        format!("{}/{}", base_url, raw_path)
+    };
 
     item.push_str(&format!("      <link>{}</link>\n", url));
     item.push_str(&format!("      <guid>{}</guid>\n", url));
@@ -208,6 +223,7 @@ mod tests {
                 rss_enabled: true,
                 allow_dangerous_html: false,
                 header_uri_fragment: false,
+                clean_urls: false,
             },
             content,
             dynamic: HashMap::new(),

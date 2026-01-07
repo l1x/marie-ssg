@@ -51,7 +51,22 @@ pub(crate) fn generate_sitemap(config: &Config, loaded_contents: &[LoadedContent
             .strip_prefix(&config.site.output_dir)
             .unwrap_or(&content.output_path);
 
-        let path = format!("/{}", path_to_url(relative_path));
+        let raw_path = path_to_url(relative_path);
+
+        // For clean URLs, convert "slug/index.html" to "slug/"
+        let path = if config.site.clean_urls {
+            format!(
+                "/{}",
+                raw_path
+                    .strip_suffix("/index.html")
+                    .or_else(|| raw_path.strip_suffix("\\index.html"))
+                    .map(|s| format!("{}/", s))
+                    .unwrap_or(raw_path)
+            )
+        } else {
+            format!("/{}", raw_path)
+        };
+
         let lastmod = Some(&content.content.meta.date);
 
         xml.push_str(&format_url_entry(&base_url, &path, lastmod));
@@ -127,6 +142,7 @@ mod tests {
                 rss_enabled: true,
                 allow_dangerous_html: false,
                 header_uri_fragment: false,
+                clean_urls: false,
             },
             content,
             dynamic: HashMap::new(),

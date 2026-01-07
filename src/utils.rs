@@ -68,6 +68,53 @@ pub(crate) fn slugify(text: &str) -> String {
     collapsed
 }
 
+/// Extracts a clean slug from a filename, stripping any date prefix.
+///
+/// Handles filenames with optional YYYY-MM-DD date prefix and returns
+/// just the slug portion without the extension.
+///
+/// # Arguments
+/// * `filename` - The filename to extract slug from (e.g., "2025-12-29-my-article.md")
+///
+/// # Returns
+/// The slug without date prefix or extension (e.g., "my-article")
+///
+/// # Examples
+/// ```
+/// use your_crate::extract_slug_from_filename;
+///
+/// assert_eq!(extract_slug_from_filename("2025-12-29-my-article.md"), "my-article");
+/// assert_eq!(extract_slug_from_filename("my-article.md"), "my-article");
+/// assert_eq!(extract_slug_from_filename("2025-12-29-my-article"), "my-article");
+/// ```
+pub(crate) fn extract_slug_from_filename(filename: &str) -> String {
+    // Remove extension if present
+    let name = filename
+        .strip_suffix(".md")
+        .or_else(|| filename.strip_suffix(".markdown"))
+        .or_else(|| filename.strip_suffix(".html"))
+        .unwrap_or(filename);
+
+    // Check for date prefix pattern: YYYY-MM-DD-
+    // Date prefix is exactly 11 characters: 4 digits + hyphen + 2 digits + hyphen + 2 digits + hyphen
+    if name.len() > 11 {
+        let potential_date = &name[..11];
+        // Check if it matches YYYY-MM-DD- pattern
+        if potential_date.len() == 11
+            && potential_date.chars().nth(4) == Some('-')
+            && potential_date.chars().nth(7) == Some('-')
+            && potential_date.chars().nth(10) == Some('-')
+            && potential_date[..4].chars().all(|c| c.is_ascii_digit())
+            && potential_date[5..7].chars().all(|c| c.is_ascii_digit())
+            && potential_date[8..10].chars().all(|c| c.is_ascii_digit())
+        {
+            return name[11..].to_string();
+        }
+    }
+
+    name.to_string()
+}
+
 /// Strips HTML tags from a string, returning only the text content.
 ///
 /// This is used to extract plain text from header content that may contain
@@ -335,6 +382,57 @@ pub(crate) fn get_output_path(file: &Path, content_dir: &str, output_dir: &str) 
         .unwrap_or_else(|_| PathBuf::from(output_dir).join("error.html"))
 }
 
+/// Converts a content file path to a clean URL output path.
+///
+/// This function transforms a markdown content file path into a clean URL structure
+/// where each content item gets its own directory with an index.html file.
+/// Date prefixes are stripped from the slug.
+///
+/// # Arguments
+/// * `file` - Path to the source markdown content file
+/// * `content_dir` - Root directory containing the content files
+/// * `output_dir` - Target directory where HTML files should be written
+///
+/// # Returns
+/// A `PathBuf` representing the clean URL output path (e.g., `dist/blog/my-article/index.html`)
+///
+/// # Examples
+/// ```
+/// use std::path::PathBuf;
+/// use your_crate::get_clean_output_path;
+///
+/// // Standard file
+/// let input = PathBuf::from("content/blog/my-article.md");
+/// let output = get_clean_output_path(&input, "content", "dist");
+/// assert_eq!(output, PathBuf::from("dist/blog/my-article/index.html"));
+///
+/// // File with date prefix - date is stripped
+/// let input = PathBuf::from("content/blog/2025-12-29-my-article.md");
+/// let output = get_clean_output_path(&input, "content", "dist");
+/// assert_eq!(output, PathBuf::from("dist/blog/my-article/index.html"));
+/// ```
+pub(crate) fn get_clean_output_path(file: &Path, content_dir: &str, output_dir: &str) -> PathBuf {
+    file.strip_prefix(content_dir)
+        .map(|rel_path| {
+            // Get the parent directory (content type) and filename
+            let parent = rel_path.parent().unwrap_or(Path::new(""));
+            let filename = rel_path
+                .file_name()
+                .and_then(|f| f.to_str())
+                .unwrap_or("index");
+
+            // Extract clean slug from filename (strips date prefix and extension)
+            let slug = extract_slug_from_filename(filename);
+
+            // Build: output_dir/parent/slug/index.html
+            PathBuf::from(output_dir)
+                .join(parent)
+                .join(&slug)
+                .join("index.html")
+        })
+        .unwrap_or_else(|_| PathBuf::from(output_dir).join("error/index.html"))
+}
+
 /// Retrieves the template path for a specific content type from the configuration.
 ///
 /// This function looks up the configured template for a given content type in the
@@ -453,6 +551,7 @@ mod tests {
                 rss_enabled: true,
                 allow_dangerous_html: false,
                 header_uri_fragment: false,
+                clean_urls: false,
             },
             content: content_types,
             dynamic: HashMap::new(),
@@ -747,5 +846,88 @@ mod tests {
         let html = "<hr><p>Test</p>";
         let result = add_header_anchors(html);
         assert_eq!(result, html);
+    }
+
+    // Tests for extract_slug_from_filename
+    #[test]
+    fn test_extract_slug_from_filename_with_date_prefix() {
+        assert_eq!(
+            extract_slug_from_filename("2025-12-29-my-article.md"),
+            "my-article"
+        );
+        assert_eq!(
+            extract_slug_from_filename("2024-01-15-hello-world.md"),
+            "hello-world"
+        );
+    }
+
+    #[test]
+    fn test_extract_slug_from_filename_without_date_prefix() {
+        assert_eq!(extract_slug_from_filename("my-article.md"), "my-article");
+        assert_eq!(extract_slug_from_filename("hello-world.md"), "hello-world");
+    }
+
+    #[test]
+    fn test_extract_slug_from_filename_different_extensions() {
+        assert_eq!(
+            extract_slug_from_filename("2025-12-29-article.markdown"),
+            "article"
+        );
+        assert_eq!(
+            extract_slug_from_filename("2025-12-29-article.html"),
+            "article"
+        );
+        assert_eq!(
+            extract_slug_from_filename("2025-12-29-article"),
+            "article"
+        );
+    }
+
+    #[test]
+    fn test_extract_slug_from_filename_edge_cases() {
+        // Invalid date format - should keep as is
+        assert_eq!(
+            extract_slug_from_filename("2025-1-29-article.md"),
+            "2025-1-29-article"
+        );
+        // Too short to have date prefix
+        assert_eq!(extract_slug_from_filename("short.md"), "short");
+        // Exactly 11 chars but not a date
+        assert_eq!(
+            extract_slug_from_filename("abcd-ef-gh-article.md"),
+            "abcd-ef-gh-article"
+        );
+    }
+
+    // Tests for get_clean_output_path
+    #[test]
+    fn test_get_clean_output_path_basic() {
+        let input = PathBuf::from("content/blog/my-article.md");
+        let result = get_clean_output_path(&input, "content", "dist");
+        assert_eq!(result, PathBuf::from("dist/blog/my-article/index.html"));
+    }
+
+    #[test]
+    fn test_get_clean_output_path_with_date_prefix() {
+        let input = PathBuf::from("content/blog/2025-12-29-my-article.md");
+        let result = get_clean_output_path(&input, "content", "dist");
+        assert_eq!(result, PathBuf::from("dist/blog/my-article/index.html"));
+    }
+
+    #[test]
+    fn test_get_clean_output_path_nested_directory() {
+        let input = PathBuf::from("src/content/projects/rust/my-project.md");
+        let result = get_clean_output_path(&input, "src/content", "out");
+        assert_eq!(
+            result,
+            PathBuf::from("out/projects/rust/my-project/index.html")
+        );
+    }
+
+    #[test]
+    fn test_get_clean_output_path_file_not_in_content_dir() {
+        let input = PathBuf::from("other/location/file.md");
+        let result = get_clean_output_path(&input, "content", "dist");
+        assert_eq!(result, PathBuf::from("dist/error/index.html"));
     }
 }

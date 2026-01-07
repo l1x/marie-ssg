@@ -12,14 +12,34 @@
 
 ## Development Environment
 
+### Prerequisites
+
+Install [mise](https://mise.jdx.dev/) for tool version management:
+
+```bash
+# macOS (Homebrew)
+brew install mise
+
+# Or using the install script
+curl https://mise.run | sh
+```
+
 ### Tooling Setup
 
 The project uses **mise** for task management and tool versioning. See `mise.toml` for the complete task reference.
 
-**Required tools:**
+```bash
+# Install required tools (Rust, Python)
+mise install
 
-- Rust 1.90.0 (managed by mise)
-- Python 3.13.10 (managed by mise)
+# Verify installation
+mise run verify
+```
+
+**Required tools (automatically installed by mise):**
+
+- Rust 1.90.0
+- Python 3.13.10
 
 **Key mise tasks:**
 
