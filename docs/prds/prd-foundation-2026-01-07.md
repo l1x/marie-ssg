@@ -53,6 +53,19 @@ Marie SSG is a simple static site generator written in Rust. The goal is to crea
 - Support a `-c/--config` flag to specify the config file path.
 - **Acceptance**: `marie-ssg build` triggers the build process.
 
+### FR-6: Clean URL Structure (added 2026-01-07)
+
+- Support optional clean URL output format via `clean_urls` config option.
+- When enabled, output files as `<content-type>/<slug>/index.html` instead of `<content-type>/<slug>.html`.
+- Strip date prefixes (YYYY-MM-DD-) from URL slugs while preserving date in metadata for sorting.
+- Update sitemap.xml URLs to use trailing slash format (`/blog/my-post/`).
+- Update RSS feed URLs to use trailing slash format.
+- Template `filename` field should output trailing slash URLs for clean URL mode.
+- **Acceptance**:
+  - `clean_urls = false` (default): outputs `blog/my-post.html` → URL `/blog/my-post.html`
+  - `clean_urls = true`: outputs `blog/my-post/index.html` → URL `/blog/my-post/`
+  - Date-prefixed files like `2025-01-07-my-post.md` produce slug `my-post` (not `2025-01-07-my-post`)
+
 ## 5. Non-functional Requirements
 
 - **NFR-1**: Build time should be under 1 second for small sites (< 100 pages).
