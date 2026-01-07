@@ -91,7 +91,7 @@ See [agents](AGENTS.md)
 
 ## Version History
 
-### v1.2.0 (unreleased)
+### v1.2.0 (2026-01-07)
 
 - Added `clean_urls` config option for SEO-friendly URL structure
   - Outputs `content-type/slug/index.html` instead of `content-type/slug.html`
