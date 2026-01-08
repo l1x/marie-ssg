@@ -552,6 +552,7 @@ mod tests {
                 allow_dangerous_html: false,
                 header_uri_fragment: false,
                 clean_urls: false,
+                asset_hashing_enabled: false,
             },
             content: content_types,
             dynamic: HashMap::new(),
@@ -877,10 +878,7 @@ mod tests {
             extract_slug_from_filename("2025-12-29-article.html"),
             "article"
         );
-        assert_eq!(
-            extract_slug_from_filename("2025-12-29-article"),
-            "article"
-        );
+        assert_eq!(extract_slug_from_filename("2025-12-29-article"), "article");
     }
 
     #[test]

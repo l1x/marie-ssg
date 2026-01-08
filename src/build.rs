@@ -4,13 +4,12 @@ use rayon::iter::{IntoParallelIterator, ParallelIterator};
 use std::path::PathBuf;
 use tracing::{debug, info};
 
+use crate::asset_hash::hash_static_assets;
 use crate::config::Config;
 use crate::content::{Content, convert_content_with_highlighting, load_content};
 use crate::error::RunError;
 use crate::output::{copy_static_files, write_output_file};
-use crate::template::{
-    create_environment, init_environment, render_html, render_index_from_loaded,
-};
+use crate::template::{create_environment_with_manifest, render_html, render_index_from_loaded};
 use crate::utils::{
     add_date_prefix, find_markdown_files, get_clean_output_path, get_content_type,
     get_content_type_template, get_output_path,
@@ -27,17 +26,39 @@ pub(crate) struct LoadedContent {
     pub(crate) output_path: PathBuf,
 }
 
-/// The main entry point for the application logic (uses cached templates).
+/// The main entry point for the application logic.
 pub(crate) fn build(config_file: &str) -> Result<(), RunError> {
     let config = Config::load_from_file(config_file)?;
-    let env = init_environment(&config.site.template_dir);
-    run_build(config_file, &config, env)
+
+    // Hash static assets if enabled
+    let manifest = if config.site.asset_hashing_enabled {
+        Some(hash_static_assets(
+            &config.site.static_dir,
+            &config.site.output_dir,
+        )?)
+    } else {
+        None
+    };
+
+    let env = create_environment_with_manifest(&config.site.template_dir, manifest.as_ref());
+    run_build(config_file, &config, &env)
 }
 
 /// Build with a fresh template environment (for watch mode).
 pub(crate) fn build_fresh(config_file: &str) -> Result<(), RunError> {
     let config = Config::load_from_file(config_file)?;
-    let env = create_environment(&config.site.template_dir);
+
+    // Hash static assets if enabled
+    let manifest = if config.site.asset_hashing_enabled {
+        Some(hash_static_assets(
+            &config.site.static_dir,
+            &config.site.output_dir,
+        )?)
+    } else {
+        None
+    };
+
+    let env = create_environment_with_manifest(&config.site.template_dir, manifest.as_ref());
     run_build(config_file, &config, &env)
 }
 

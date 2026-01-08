@@ -62,6 +62,7 @@ rss_enabled = true                   # Generate feed.xml
 allow_dangerous_html = false         # Allow raw HTML in markdown (for <figure>, inline SVGs, etc.)
 header_uri_fragment = false          # Add anchor links to headers for URL fragment navigation
 clean_urls = false                   # Output as slug/index.html for SEO-friendly URLs (/blog/post/ instead of /blog/post.html)
+asset_hashing_enabled = false        # Hash CSS/JS files for cache busting (style.css → style.a1b2c3d4.css)
 
 # Files copied to output root (e.g., favicon)
 [site.root_static]
@@ -178,6 +179,7 @@ Templates use Jinja2 syntax via the Minijinja library.
 - `| safe` - Render HTML without escaping
 - `| url` - URL-encode for href attributes
 - `| datetimeformat("%Y-%m-%d")` - Format dates
+- `| asset_hash` - Resolve asset path to hashed version (requires `asset_hashing_enabled = true`)
 
 ### Template Example
 
@@ -241,6 +243,42 @@ Benefits:
 - Date prefix stripped from URL (kept in metadata for sorting)
 - Trailing slash convention (modern SSG standard)
 - Sitemap and RSS URLs automatically updated
+
+### Asset Hashing (Cache Busting)
+
+When `asset_hashing_enabled = true`, CSS and JS files get content-based hashes in their filenames for cache busting.
+
+**How it works:**
+1. Marie computes an 8-character BLAKE3 hash from each CSS/JS file's content
+2. Files are copied with hashed names: `style.css` → `style.a1b2c3d4.css`
+3. A manifest maps original paths to hashed paths
+4. Old hashed files are cleaned up on rebuild
+
+**Usage in templates:**
+
+```html
+<!-- Before (hardcoded, cache problems) -->
+<link rel="stylesheet" href="/static/css/style.css" />
+<script src="/static/js/app.js"></script>
+
+<!-- After (using asset_hash filter) -->
+<link rel="stylesheet" href="{{{{ "static/css/style.css" | asset_hash }}}}" />
+<script src="{{{{ "static/js/app.js" | asset_hash }}}}"></script>
+```
+
+**Output:**
+```html
+<link rel="stylesheet" href="/static/css/style.a1b2c3d4.css" />
+<script src="/static/js/app.b5c6d7e8.js"></script>
+```
+
+**Benefits:**
+- Set long cache headers (e.g., `Cache-Control: max-age=31536000`)
+- Browsers automatically fetch new versions when content changes
+- No manual cache busting (no `?v=123` query strings needed)
+- Only CSS and JS files are hashed; images and fonts are unchanged
+
+**Note:** If `asset_hashing_enabled = false` (default), the `asset_hash` filter returns the original path unchanged.
 
 ### Watch Mode (macOS)
 

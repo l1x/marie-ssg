@@ -3,9 +3,9 @@
 use std::path::Path;
 use time::OffsetDateTime;
 
+use crate::LoadedContent;
 use crate::config::Config;
 use crate::content::get_excerpt_html;
-use crate::LoadedContent;
 
 /// Generates an RSS 2.0 feed string for the site.
 ///
@@ -123,7 +123,11 @@ fn format_item(config: &Config, content: &LoadedContent, base_url: &str) -> Stri
     item.push_str(&format!("      <guid>{}</guid>\n", url));
 
     // Description (excerpt)
-    let excerpt = get_excerpt_html(&content.content.data, "## Context", config.site.allow_dangerous_html);
+    let excerpt = get_excerpt_html(
+        &content.content.data,
+        "## Context",
+        config.site.allow_dangerous_html,
+    );
     if !excerpt.is_empty() {
         item.push_str(&format!(
             "      <description>{}</description>\n",
@@ -224,6 +228,7 @@ mod tests {
                 allow_dangerous_html: false,
                 header_uri_fragment: false,
                 clean_urls: false,
+                asset_hashing_enabled: false,
             },
             content,
             dynamic: HashMap::new(),

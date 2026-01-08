@@ -41,8 +41,12 @@ struct ContentTypeConfig {
     output_naming: Option<String>,
 }
 
-fn default_true() -> bool { true }
-fn default_theme() -> String { "github_dark".to_string() }
+fn default_true() -> bool {
+    true
+}
+fn default_theme() -> String {
+    "github_dark".to_string()
+}
 
 // Minimal config - just required fields
 const MINIMAL_TOML: &str = r#"

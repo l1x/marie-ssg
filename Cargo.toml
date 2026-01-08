@@ -54,6 +54,7 @@ time = { version = "0", features = ["serde", "serde-human-readable", "parsing", 
 markdown = { version = "1" }
 minijinja = { version = "2", features = ["loader"] }
 minijinja-contrib = { version = "2", features = ["datetime"] }
+blake3 = { version = "1" }
 rayon = { version = "1" }
 serde = { version = "1", features = ["derive"] }
 thiserror = { version = "2" }

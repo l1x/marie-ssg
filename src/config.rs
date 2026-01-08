@@ -79,6 +79,9 @@ pub(crate) struct SiteConfig {
     /// Enable clean URL structure: output as <type>/<slug>/index.html instead of <type>/<slug>.html
     #[serde(default)]
     pub clean_urls: bool,
+    /// Enable content-based asset hashing for CSS/JS files (cache busting)
+    #[serde(default)]
+    pub asset_hashing_enabled: bool,
 }
 
 fn default_true() -> bool {

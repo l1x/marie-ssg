@@ -5,6 +5,7 @@ use tracing::error;
 use tracing_subscriber::layer::SubscriberExt;
 use tracing_subscriber::util::SubscriberInitExt;
 
+mod asset_hash;
 mod build;
 mod config;
 mod content;

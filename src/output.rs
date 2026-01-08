@@ -250,6 +250,7 @@ mod tests {
                 allow_dangerous_html: false,
                 header_uri_fragment: false,
                 clean_urls: false,
+                asset_hashing_enabled: false,
             },
             content: HashMap::new(),
             dynamic: HashMap::new(),

@@ -1,12 +1,12 @@
 // src/template.rs
 
-use minijinja::{Environment, Value, context, path_loader};
+use minijinja::{Environment, State, Value, context, path_loader};
 use minijinja_contrib::add_to_environment;
-use std::sync::OnceLock;
 use time::OffsetDateTime;
 use time::macros::format_description;
 
 use crate::{
+    asset_hash::AssetManifest,
     config::Config,
     content::{ContentItem, ContentMeta, get_excerpt_html},
 };
@@ -31,25 +31,62 @@ fn url_filter(value: &str) -> Value {
     Value::from_safe_string(value.to_string())
 }
 
-static ENV: OnceLock<Environment<'static>> = OnceLock::new();
+/// Filter to resolve asset paths to their hashed versions.
+///
+/// When asset hashing is enabled, this filter looks up the original path
+/// in the asset manifest and returns the hashed URL. If not found or
+/// hashing is disabled, returns the original path normalized.
+///
+/// Usage in templates: `{{ "static/css/style.css" | asset_hash }}`
+fn asset_hash_filter(state: &State, path: &str) -> Value {
+    // Normalize path for lookup: remove leading "/" and "static/"
+    let normalized = path.trim_start_matches('/').trim_start_matches("static/");
 
-/// Initialize and return the global template environment (cached, for single builds)
-pub(crate) fn init_environment(template_dir: &str) -> &'static Environment<'static> {
-    ENV.get_or_init(|| {
-        let mut env = Environment::new();
-        env.set_loader(path_loader(template_dir));
-        add_to_environment(&mut env);
-        env.add_filter("url", url_filter);
-        env
-    })
+    // Try to get the manifest from globals
+    if let Some(manifest_value) = state.lookup("_asset_manifest")
+        && let Ok(hashed) = manifest_value.get_item(&Value::from(normalized))
+        && !hashed.is_undefined()
+        && let Some(s) = hashed.as_str()
+    {
+        return Value::from_safe_string(s.to_string());
+    }
+
+    // Fallback: return normalized path
+    let result = if path.starts_with("/static/") {
+        path.to_string()
+    } else if path.starts_with("static/") {
+        format!("/{}", path)
+    } else {
+        format!("/static/{}", path)
+    };
+    Value::from_safe_string(result)
 }
 
-/// Create a fresh template environment (uncached, for watch mode)
-pub(crate) fn create_environment(template_dir: &str) -> Environment<'static> {
+/// Configure common environment settings (filters, contrib functions)
+fn configure_environment(env: &mut Environment<'static>) {
+    add_to_environment(env);
+    env.add_filter("url", url_filter);
+    env.add_filter("asset_hash", asset_hash_filter);
+}
+
+/// Create a template environment with optional asset manifest.
+///
+/// This is the primary way to create environments for builds.
+/// If a manifest is provided, it will be available to the asset_hash filter.
+pub(crate) fn create_environment_with_manifest(
+    template_dir: &str,
+    manifest: Option<&AssetManifest>,
+) -> Environment<'static> {
     let mut env = Environment::new();
     env.set_loader(path_loader(template_dir));
-    add_to_environment(&mut env);
-    env.add_filter("url", url_filter);
+    configure_environment(&mut env);
+
+    // Add manifest as a global if provided
+    if let Some(m) = manifest {
+        // Convert HashMap to a Value object for lookup
+        env.add_global("_asset_manifest", Value::from_serialize(m));
+    }
+
     env
 }
 
@@ -76,7 +113,11 @@ fn build_content_item(lc: &crate::LoadedContent, config: &Config) -> ContentItem
         raw_filename
     };
 
-    let excerpt = get_excerpt_html(&lc.content.data, "## Context", config.site.allow_dangerous_html);
+    let excerpt = get_excerpt_html(
+        &lc.content.data,
+        "## Context",
+        config.site.allow_dangerous_html,
+    );
 
     ContentItem {
         html: lc.html.clone(),
@@ -173,6 +214,7 @@ mod tests {
                 allow_dangerous_html: false,
                 header_uri_fragment: false,
                 clean_urls: false,
+                asset_hashing_enabled: false,
             },
             content: HashMap::new(),
             dynamic: HashMap::new(),

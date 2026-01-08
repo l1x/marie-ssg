@@ -257,7 +257,10 @@ pub(crate) fn convert_content_with_highlighting(
     header_uri_fragment: bool,
 ) -> Result<String, ContentError> {
     // Convert markdown to HTML
-    let mut html = match markdown::to_html_with_options(&content.data, &markdown_options(allow_dangerous_html)) {
+    let mut html = match markdown::to_html_with_options(
+        &content.data,
+        &markdown_options(allow_dangerous_html),
+    ) {
         Ok(html) => html,
         Err(e) => {
             error!("Markdown parsing failed: {}", e);
@@ -321,7 +324,11 @@ pub(crate) fn convert_content_with_highlighting(
 /// assert!(excerpt.contains("This is the excerpt text"));
 /// assert!(!excerpt.contains("Main Content"));
 /// ```
-pub(crate) fn get_excerpt_html(markdown: &str, summary_pattern: &str, allow_dangerous_html: bool) -> String {
+pub(crate) fn get_excerpt_html(
+    markdown: &str,
+    summary_pattern: &str,
+    allow_dangerous_html: bool,
+) -> String {
     // Find the start of the summary section
     if let Some(start_idx) = markdown.find(summary_pattern) {
         // Ensure we don't panic if summary_pattern is at the end
@@ -341,7 +348,10 @@ pub(crate) fn get_excerpt_html(markdown: &str, summary_pattern: &str, allow_dang
         let excerpt_markdown = content_after_summary[..end_idx].trim();
 
         // Convert the excerpt markdown to HTML with better error handling
-        match markdown::to_html_with_options(excerpt_markdown, &markdown_options(allow_dangerous_html)) {
+        match markdown::to_html_with_options(
+            excerpt_markdown,
+            &markdown_options(allow_dangerous_html),
+        ) {
             Ok(html) => html,
             Err(e) => {
                 tracing::warn!("Failed to convert excerpt to HTML: {}", e);
@@ -740,8 +750,14 @@ Should not be included.
     "#;
 
         let meta: ContentMeta = toml::from_str(meta_content).unwrap();
-        assert_eq!(meta.extra.get("custom_field"), Some(&"custom value".to_string()));
-        assert_eq!(meta.extra.get("another_field"), Some(&"another value".to_string()));
+        assert_eq!(
+            meta.extra.get("custom_field"),
+            Some(&"custom value".to_string())
+        );
+        assert_eq!(
+            meta.extra.get("another_field"),
+            Some(&"another value".to_string())
+        );
     }
 
     #[test]
@@ -760,7 +776,10 @@ Should not be included.
 
         let meta: ContentMeta = toml::from_str(meta_content).unwrap();
         assert_eq!(meta.cover, Some("/images/cover.png".to_string()));
-        assert_eq!(meta.extra.get("subtitle"), Some(&"A great subtitle".to_string()));
+        assert_eq!(
+            meta.extra.get("subtitle"),
+            Some(&"A great subtitle".to_string())
+        );
         assert_eq!(meta.extra.get("category"), Some(&"tutorials".to_string()));
         // Ensure known fields are not in extra
         assert_eq!(meta.extra.get("title"), None);
@@ -840,7 +859,9 @@ This continues until the end of the string.
     fn test_convert_content_with_dangerous_html_disabled() {
         let content = Content {
             meta: create_test_metadata(),
-            data: "# Test\n\n<figure><img src=\"test.jpg\"><figcaption>Caption</figcaption></figure>".to_string(),
+            data:
+                "# Test\n\n<figure><img src=\"test.jpg\"><figcaption>Caption</figcaption></figure>"
+                    .to_string(),
         };
 
         let result = convert_content_with_highlighting(
@@ -861,7 +882,9 @@ This continues until the end of the string.
     fn test_convert_content_with_dangerous_html_enabled() {
         let content = Content {
             meta: create_test_metadata(),
-            data: "# Test\n\n<figure><img src=\"test.jpg\"><figcaption>Caption</figcaption></figure>".to_string(),
+            data:
+                "# Test\n\n<figure><img src=\"test.jpg\"><figcaption>Caption</figcaption></figure>"
+                    .to_string(),
         };
 
         let result = convert_content_with_highlighting(

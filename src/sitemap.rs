@@ -143,6 +143,7 @@ mod tests {
                 allow_dangerous_html: false,
                 header_uri_fragment: false,
                 clean_urls: false,
+                asset_hashing_enabled: false,
             },
             content,
             dynamic: HashMap::new(),
@@ -189,7 +190,9 @@ mod tests {
         let sitemap = generate_sitemap(&config, &contents);
 
         assert!(sitemap.contains(r#"<?xml version="1.0" encoding="UTF-8"?>"#));
-        assert!(sitemap.contains(r#"<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">"#));
+        assert!(
+            sitemap.contains(r#"<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">"#)
+        );
         assert!(sitemap.contains("</urlset>"));
         // Should have homepage
         assert!(sitemap.contains("<loc>https://example.com/</loc>"));
@@ -201,8 +204,18 @@ mod tests {
     fn test_generate_sitemap_with_content() {
         let config = create_test_config();
         let contents = vec![
-            create_test_loaded_content("hello-world", "Hello World", "2024-01-15T10:00:00+00:00", "posts"),
-            create_test_loaded_content("second-post", "Second Post", "2024-02-20T12:00:00+00:00", "posts"),
+            create_test_loaded_content(
+                "hello-world",
+                "Hello World",
+                "2024-01-15T10:00:00+00:00",
+                "posts",
+            ),
+            create_test_loaded_content(
+                "second-post",
+                "Second Post",
+                "2024-02-20T12:00:00+00:00",
+                "posts",
+            ),
         ];
 
         let sitemap = generate_sitemap(&config, &contents);
