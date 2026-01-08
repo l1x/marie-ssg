@@ -63,6 +63,7 @@ allow_dangerous_html = false         # Allow raw HTML in markdown (for <figure>,
 header_uri_fragment = false          # Add anchor links to headers for URL fragment navigation
 clean_urls = false                   # Output as slug/index.html for SEO-friendly URLs (/blog/post/ instead of /blog/post.html)
 asset_hashing_enabled = false        # Hash CSS/JS files for cache busting (style.css → style.a1b2c3d4.css)
+# asset_manifest_path = "dist/asset-manifest.json"  # Export manifest to JSON (optional)
 
 # Files copied to output root (e.g., favicon)
 [site.root_static]
@@ -279,6 +280,24 @@ When `asset_hashing_enabled = true`, CSS and JS files get content-based hashes i
 - Only CSS and JS files are hashed; images and fonts are unchanged
 
 **Note:** If `asset_hashing_enabled = false` (default), the `asset_hash` filter returns the original path unchanged.
+
+**Exporting the manifest:**
+
+Optionally export the asset manifest to a JSON file for use by service workers, external build tools, or debugging:
+
+```toml
+[site]
+asset_hashing_enabled = true
+asset_manifest_path = "dist/asset-manifest.json"
+```
+
+Output (`asset-manifest.json`):
+```json
+{{
+  "css/style.css": "/static/css/style.a1b2c3d4.css",
+  "js/app.js": "/static/js/app.b5c6d7e8.js"
+}}
+```
 
 ### Watch Mode (macOS)
 

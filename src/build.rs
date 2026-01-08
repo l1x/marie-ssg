@@ -4,7 +4,7 @@ use rayon::iter::{IntoParallelIterator, ParallelIterator};
 use std::path::PathBuf;
 use tracing::{debug, info};
 
-use crate::asset_hash::hash_static_assets;
+use crate::asset_hash::{export_manifest_to_json, hash_static_assets};
 use crate::config::Config;
 use crate::content::{Content, convert_content_with_highlighting, load_content};
 use crate::error::RunError;
@@ -40,6 +40,11 @@ pub(crate) fn build(config_file: &str) -> Result<(), RunError> {
         None
     };
 
+    // Export manifest to JSON if path is configured
+    if let (Some(manifest), Some(path)) = (&manifest, &config.site.asset_manifest_path) {
+        export_manifest_to_json(manifest, path)?;
+    }
+
     let env = create_environment_with_manifest(&config.site.template_dir, manifest.as_ref());
     run_build(config_file, &config, &env)
 }
@@ -57,6 +62,11 @@ pub(crate) fn build_fresh(config_file: &str) -> Result<(), RunError> {
     } else {
         None
     };
+
+    // Export manifest to JSON if path is configured
+    if let (Some(manifest), Some(path)) = (&manifest, &config.site.asset_manifest_path) {
+        export_manifest_to_json(manifest, path)?;
+    }
 
     let env = create_environment_with_manifest(&config.site.template_dir, manifest.as_ref());
     run_build(config_file, &config, &env)

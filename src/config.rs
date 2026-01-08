@@ -82,6 +82,9 @@ pub(crate) struct SiteConfig {
     /// Enable content-based asset hashing for CSS/JS files (cache busting)
     #[serde(default)]
     pub asset_hashing_enabled: bool,
+    /// Path to write asset manifest JSON file (requires asset_hashing_enabled)
+    #[serde(default)]
+    pub asset_manifest_path: Option<String>,
 }
 
 fn default_true() -> bool {

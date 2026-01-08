@@ -204,6 +204,67 @@ pub(crate) fn hash_static_assets(
     Ok(manifest)
 }
 
+/// Exports the asset manifest to a JSON file.
+/// The manifest maps original asset paths to their hashed URLs.
+pub(crate) fn export_manifest_to_json(
+    manifest: &AssetManifest,
+    output_path: &str,
+) -> Result<(), StaticError> {
+    let path = PathBuf::from(output_path);
+
+    // Create parent directories if needed
+    if let Some(parent) = path.parent() {
+        fs::create_dir_all(parent).map_err(|e| StaticError::Io {
+            path: parent.to_path_buf(),
+            source: e,
+        })?;
+    }
+
+    // Build JSON manually to avoid serde_json dependency
+    let mut json = String::from("{\n");
+    let mut entries: Vec<_> = manifest.iter().collect();
+    entries.sort_by_key(|(k, _)| *k); // Sort for deterministic output
+
+    for (i, (key, value)) in entries.iter().enumerate() {
+        // Escape special JSON characters in keys and values
+        let escaped_key = escape_json_string(key);
+        let escaped_value = escape_json_string(value);
+        json.push_str(&format!("  \"{}\": \"{}\"", escaped_key, escaped_value));
+        if i < entries.len() - 1 {
+            json.push(',');
+        }
+        json.push('\n');
+    }
+    json.push('}');
+
+    fs::write(&path, json).map_err(|e| StaticError::Io {
+        path: path.clone(),
+        source: e,
+    })?;
+
+    info!("asset_hash::export manifest to {:?}", path);
+    Ok(())
+}
+
+/// Escapes special characters for JSON string values.
+fn escape_json_string(s: &str) -> String {
+    let mut result = String::with_capacity(s.len());
+    for c in s.chars() {
+        match c {
+            '"' => result.push_str("\\\""),
+            '\\' => result.push_str("\\\\"),
+            '\n' => result.push_str("\\n"),
+            '\r' => result.push_str("\\r"),
+            '\t' => result.push_str("\\t"),
+            c if c.is_control() => {
+                result.push_str(&format!("\\u{:04x}", c as u32));
+            }
+            c => result.push(c),
+        }
+    }
+    result
+}
+
 /// Resolves an asset path using the manifest.
 /// If the path is in the manifest, returns the hashed URL.
 /// Otherwise, returns the original path with a leading slash.
@@ -414,5 +475,63 @@ mod tests {
             resolve_asset_path(&manifest, "/static/css/style.css"),
             "/static/css/style.css"
         );
+    }
+
+    #[test]
+    fn test_export_manifest_to_json() {
+        let temp_dir = tempdir().unwrap();
+        let manifest_path = temp_dir.path().join("asset-manifest.json");
+
+        let mut manifest = HashMap::new();
+        manifest.insert(
+            "css/style.css".to_string(),
+            "/static/css/style.a1b2c3d4.css".to_string(),
+        );
+        manifest.insert(
+            "js/app.js".to_string(),
+            "/static/js/app.12345678.js".to_string(),
+        );
+
+        export_manifest_to_json(&manifest, manifest_path.to_str().unwrap()).unwrap();
+
+        // Verify file was created
+        assert!(manifest_path.exists());
+
+        // Verify content is valid JSON with expected structure
+        let content = fs::read_to_string(&manifest_path).unwrap();
+        assert!(content.starts_with('{'));
+        assert!(content.ends_with('}'));
+        assert!(content.contains("\"css/style.css\": \"/static/css/style.a1b2c3d4.css\""));
+        assert!(content.contains("\"js/app.js\": \"/static/js/app.12345678.js\""));
+    }
+
+    #[test]
+    fn test_export_manifest_to_json_creates_parent_dirs() {
+        let temp_dir = tempdir().unwrap();
+        let manifest_path = temp_dir.path().join("nested/dir/asset-manifest.json");
+
+        let manifest = HashMap::new();
+        export_manifest_to_json(&manifest, manifest_path.to_str().unwrap()).unwrap();
+
+        assert!(manifest_path.exists());
+        let content = fs::read_to_string(&manifest_path).unwrap();
+        assert_eq!(content, "{\n}");
+    }
+
+    #[test]
+    fn test_export_manifest_to_json_escapes_special_chars() {
+        let temp_dir = tempdir().unwrap();
+        let manifest_path = temp_dir.path().join("manifest.json");
+
+        let mut manifest = HashMap::new();
+        manifest.insert(
+            "path/with\"quotes.css".to_string(),
+            "/static/path/with\"quotes.a1b2c3d4.css".to_string(),
+        );
+
+        export_manifest_to_json(&manifest, manifest_path.to_str().unwrap()).unwrap();
+
+        let content = fs::read_to_string(&manifest_path).unwrap();
+        assert!(content.contains("\\\""));
     }
 }

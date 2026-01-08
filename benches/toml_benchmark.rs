@@ -4,6 +4,7 @@ use std::collections::HashMap;
 
 // Minimal config struct for parsing
 #[derive(Debug, Deserialize)]
+#[allow(dead_code)]
 struct Config {
     site: SiteConfig,
     #[serde(default)]
@@ -13,6 +14,7 @@ struct Config {
 }
 
 #[derive(Debug, Deserialize)]
+#[allow(dead_code)]
 struct SiteConfig {
     title: String,
     tagline: String,
@@ -34,6 +36,7 @@ struct SiteConfig {
 }
 
 #[derive(Debug, Deserialize)]
+#[allow(dead_code)]
 struct ContentTypeConfig {
     index_template: String,
     content_template: String,

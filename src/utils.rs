@@ -553,6 +553,7 @@ mod tests {
                 header_uri_fragment: false,
                 clean_urls: false,
                 asset_hashing_enabled: false,
+                asset_manifest_path: None,
             },
             content: content_types,
             dynamic: HashMap::new(),
