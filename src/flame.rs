@@ -10,10 +10,80 @@ use tracing_subscriber::util::SubscriberInitExt;
 use crate::build::build_with_spans;
 use crate::error::RunError;
 
-/// Build the site with profiling and generate a flamechart SVG.
-pub(crate) fn flame(config_file: &str, output_path: &str) -> Result<(), RunError> {
-    // Create a file for the folded stacks output
-    let folded_path = format!("{}.folded", output_path);
+/// Build the site with profiling and generate output in requested formats.
+///
+/// # Arguments
+/// * `config_file` - Path to the site configuration file
+/// * `output_base` - Base path for output files (extensions added based on flags)
+/// * `fold` - Output folded stacks file (.folded) for speedscope/inferno
+/// * `svg` - Output SVG flamegraph (.svg)
+/// * `time` - Output Chrome DevTools JSON (.json) for timeline view
+///
+/// If no format flags are specified, defaults to SVG output only.
+pub(crate) fn flame(
+    config_file: &str,
+    output_base: &str,
+    fold: bool,
+    svg: bool,
+    time: bool,
+) -> Result<(), RunError> {
+    // Default to SVG if no flags specified
+    let (fold, svg, time) = if !fold && !svg && !time {
+        (false, true, false)
+    } else {
+        (fold, svg, time)
+    };
+
+    // Chrome DevTools JSON format (timeline with timestamps)
+    if time {
+        return flame_chrome(config_file, output_base);
+    }
+
+    // Folded stacks format (with optional SVG generation)
+    flame_folded(config_file, output_base, fold, svg)
+}
+
+/// Build with tracing-chrome layer to output Chrome DevTools JSON.
+fn flame_chrome(config_file: &str, output_base: &str) -> Result<(), RunError> {
+    use tracing_chrome::ChromeLayerBuilder;
+
+    let json_path = format!("{}.json", output_base);
+
+    let (chrome_layer, guard) = ChromeLayerBuilder::new()
+        .file(&json_path)
+        .include_args(true)
+        .build();
+
+    tracing_subscriber::registry()
+        .with(
+            tracing_subscriber::EnvFilter::try_from_default_env()
+                .unwrap_or_else(|_| "marie_ssg=trace".into()),
+        )
+        .with(chrome_layer)
+        .init();
+
+    info!("flame::start profiling build (chrome timeline)");
+
+    // Run the build with detailed spans
+    build_with_spans(config_file)?;
+
+    // Flush the chrome layer
+    drop(guard);
+
+    info!("flame::complete → {}", json_path);
+
+    Ok(())
+}
+
+/// Build with tracing-flame layer to output folded stacks and optionally SVG.
+fn flame_folded(
+    config_file: &str,
+    output_base: &str,
+    keep_folded: bool,
+    generate_svg: bool,
+) -> Result<(), RunError> {
+    let folded_path = format!("{}.folded", output_base);
+    let svg_path = format!("{}.svg", output_base);
 
     // Set up tracing with flame layer
     let (flame_layer, guard) = FlameLayer::with_file(&folded_path).map_err(|e| {
@@ -28,7 +98,7 @@ pub(crate) fn flame(config_file: &str, output_path: &str) -> Result<(), RunError
         .with(flame_layer)
         .init();
 
-    info!("flame::start profiling build");
+    info!("flame::start profiling build (folded stacks)");
 
     // Run the build with detailed spans
     build_with_spans(config_file)?;
@@ -36,13 +106,18 @@ pub(crate) fn flame(config_file: &str, output_path: &str) -> Result<(), RunError
     // Flush the flame layer
     drop(guard);
 
-    info!("flame::generate → {}", output_path);
+    // Generate SVG if requested
+    if generate_svg {
+        info!("flame::generate svg → {}", svg_path);
+        generate_flamechart(&folded_path, &svg_path)?;
+    }
 
-    // Generate flamechart SVG from folded stacks
-    generate_flamechart(&folded_path, output_path)?;
-
-    // Clean up the intermediate folded file
-    std::fs::remove_file(&folded_path).ok();
+    // Clean up folded file unless --fold was specified
+    if !keep_folded {
+        std::fs::remove_file(&folded_path).ok();
+    } else {
+        info!("flame::folded → {}", folded_path);
+    }
 
     info!("flame::complete ✓");
 

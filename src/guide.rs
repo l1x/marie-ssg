@@ -16,6 +16,7 @@ marie-ssg build              # Build the site
 marie-ssg build -c prod.toml # Build with custom config
 marie-ssg watch              # Watch and rebuild on changes (macOS)
 marie-ssg flame              # Build with profiling, output flamechart.svg
+marie-ssg flame --time       # Profile with Chrome DevTools JSON output
 marie-ssg guide              # Show this guide
 ```
 
@@ -384,14 +385,23 @@ output/
 
 ### Flamechart Profiling
 
-Generate a flamechart SVG to visualize build performance:
+Generate profiling output to visualize build performance:
 ```bash
-marie-ssg flame                    # Output: flamechart.svg
-marie-ssg flame -o build.svg       # Custom output path
+marie-ssg flame                    # Output: flamechart.svg (default)
+marie-ssg flame --svg              # Explicit SVG flamegraph
+marie-ssg flame --fold             # Output: flamechart.folded (for speedscope)
+marie-ssg flame --fold --svg       # Output both formats
+marie-ssg flame --time             # Output: flamechart.json (Chrome DevTools)
+marie-ssg flame -o build           # Custom output base path
 marie-ssg flame -c prod.toml       # Custom config
 ```
 
-Open the SVG in a browser for an interactive flamechart showing time spent in each build phase.
+Output formats:
+- `--svg`: Interactive SVG flamegraph (default if no flags specified)
+- `--fold`: Folded stacks format for speedscope or inferno
+- `--time`: Chrome DevTools JSON for timeline view with timestamps
+
+Open SVG in a browser, load `.folded` in speedscope, or import `.json` in Chrome DevTools (Performance tab).
 
 ## Tips
 
