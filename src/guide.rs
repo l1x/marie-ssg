@@ -116,6 +116,7 @@ author = "Your Name"
 tags = ["intro", "blog"]
 template = "custom.html"             # Optional: override default template
 cover = "/images/hello-cover.jpg"    # Optional: cover image for social sharing
+extra_js = ["static/js/chart.js"]    # Optional: JavaScript files for this article
 
 [extra]
 reading_time = "5 min"               # Custom fields go in [extra] section
@@ -132,6 +133,7 @@ category = "tutorials"
 | tags     | Yes      | Array of tags (can be empty: `[]`)                       |
 | template | No       | Override the content type's default template             |
 | cover    | No       | Cover image URL/path for social sharing                  |
+| extra_js | No       | JavaScript files to load (array, e.g., `["js/chart.js"]`)|
 | [extra]  | No       | Custom key-value fields (access via `meta.extra.key`)    |
 
 ## Templates (Jinja2/Minijinja)
@@ -170,6 +172,7 @@ Templates use Jinja2 syntax via the Minijinja library.
 | `item.meta.author`    | Author name                                        |
 | `item.meta.tags`      | List of tags                                       |
 | `item.meta.cover`     | Cover image URL/path (if set)                      |
+| `item.meta.extra_js`  | JavaScript files array (iterate with for loop)     |
 | `item.meta.extra.*`   | Custom fields (e.g., `item.meta.extra.reading_time`) |
 | `item.formatted_date` | Human-readable date (e.g., "January 15, 2024")     |
 | `item.filename`       | Output path (e.g., `blog/hello/` with clean_urls)  |
@@ -194,6 +197,10 @@ Templates use Jinja2 syntax via the Minijinja library.
   <time>{{{{ meta.date | datetimeformat("%B %d, %Y") }}}}</time>
   <div class="content">{{{{ content | safe }}}}</div>
 </article>
+
+{{%- for script in meta.extra_js %}}
+<script src="{{{{ script | asset_hash }}}}"></script>
+{{%- endfor %}}
 {{% endblock %}}
 ```
 

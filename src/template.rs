@@ -236,6 +236,7 @@ mod tests {
             template: None,
             cover: None,
             extra: std::collections::HashMap::new(),
+            extra_js: vec![],
         }
     }
 

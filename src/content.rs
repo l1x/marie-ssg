@@ -67,6 +67,10 @@ pub(crate) struct ContentMeta {
     /// Access in templates via meta.extra.field_name
     #[serde(default)]
     pub extra: HashMap<String, String>,
+    /// JavaScript files to load for this content
+    /// Access in templates via meta.extra_js
+    #[serde(default)]
+    pub extra_js: Vec<String>,
 }
 
 /// Processed content item ready for template rendering and output.
@@ -383,6 +387,7 @@ mod tests {
             template: Some("custom.html".to_string()),
             cover: Some("/images/test-cover.jpg".to_string()),
             extra: HashMap::new(),
+            extra_js: vec![],
         }
     }
 
@@ -786,6 +791,59 @@ Should not be included.
         // Ensure known fields are not in extra
         assert_eq!(meta.extra.get("title"), None);
         assert_eq!(meta.extra.get("cover"), None);
+    }
+
+    #[test]
+    fn test_content_meta_with_extra_js() {
+        let meta_content = r#"
+    title = "Data Visualization Post"
+    date = "2023-12-15T10:30:00+05:00"
+    author = "Test Author"
+    tags = ["viz"]
+    extra_js = ["static/js/d3.min.js", "static/js/chart.js"]
+    "#;
+
+        let meta: ContentMeta = toml::from_str(meta_content).unwrap();
+        assert_eq!(meta.extra_js.len(), 2);
+        assert_eq!(meta.extra_js[0], "static/js/d3.min.js");
+        assert_eq!(meta.extra_js[1], "static/js/chart.js");
+    }
+
+    #[test]
+    fn test_content_meta_without_extra_js_defaults_to_empty() {
+        let meta_content = r#"
+    title = "Simple Post"
+    date = "2023-12-15T10:30:00+05:00"
+    author = "Test Author"
+    tags = ["rust"]
+    "#;
+
+        let meta: ContentMeta = toml::from_str(meta_content).unwrap();
+        assert!(meta.extra_js.is_empty());
+    }
+
+    #[test]
+    fn test_content_meta_with_extra_js_and_extra_fields() {
+        let meta_content = r#"
+    title = "Full Featured Post"
+    date = "2023-12-15T10:30:00+05:00"
+    author = "Test Author"
+    tags = ["viz", "data"]
+    cover = "/images/cover.png"
+    extra_js = ["static/js/viz.js"]
+
+    [extra]
+    reading_time = "5 min"
+    "#;
+
+        let meta: ContentMeta = toml::from_str(meta_content).unwrap();
+        assert_eq!(meta.extra_js.len(), 1);
+        assert_eq!(meta.extra_js[0], "static/js/viz.js");
+        assert_eq!(meta.cover, Some("/images/cover.png".to_string()));
+        assert_eq!(
+            meta.extra.get("reading_time"),
+            Some(&"5 min".to_string())
+        );
     }
 
     #[test]
