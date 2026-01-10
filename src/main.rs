@@ -10,6 +10,7 @@ mod build;
 mod config;
 mod content;
 mod error;
+mod flame;
 mod guide;
 mod output;
 mod redirect;
@@ -46,6 +47,7 @@ enum SubCommand {
     Build(BuildArgs),
     Watch(WatchArgs),
     Guide(GuideArgs),
+    Flame(FlameArgs),
 }
 
 #[derive(FromArgs, Debug)]
@@ -71,8 +73,42 @@ struct WatchArgs {
 /// Print a guide explaining Marie SSG features and configuration
 struct GuideArgs {}
 
+#[derive(FromArgs, Debug)]
+#[argh(subcommand, name = "flame")]
+/// Build the site with profiling and generate a flamechart SVG
+struct FlameArgs {
+    /// path to the config file
+    #[argh(option, short = 'c', default = "default_config_file()")]
+    config_file: String,
+
+    /// output path for the flamechart SVG
+    #[argh(option, short = 'o', default = "default_flame_output()")]
+    output: String,
+}
+
+fn default_flame_output() -> String {
+    "flamechart.svg".to_string()
+}
+
 fn main() {
-    // Initialize tracing subscriber with env filter and clean format
+    // Parse CLI arguments first to check if flame command
+    let argz: Argz = argh::from_env();
+
+    if argz.version {
+        println!("marie-ssg {}", VERSION);
+        return;
+    }
+
+    // Flame command has its own tracing setup for profiling
+    if let Some(SubCommand::Flame(args)) = argz.command {
+        if let Err(e) = flame::flame(&args.config_file, &args.output) {
+            eprintln!("Error: {:?}", e);
+            std::process::exit(1);
+        }
+        return;
+    }
+
+    // Initialize standard tracing subscriber for other commands
     // Format: "2025-01-03T12:00:00Z INFO message" (no module path, no spans)
     tracing_subscriber::registry()
         .with(
@@ -88,14 +124,6 @@ fn main() {
                 .with_span_events(tracing_subscriber::fmt::format::FmtSpan::NONE), // Remove span prefixes
         )
         .init();
-
-    // Parse CLI arguments
-    let argz: Argz = argh::from_env();
-
-    if argz.version {
-        println!("marie-ssg {}", VERSION);
-        return;
-    }
 
     match argz.command {
         Some(SubCommand::Build(args)) => {
@@ -113,6 +141,7 @@ fn main() {
         Some(SubCommand::Guide(_)) => {
             guide::print_guide();
         }
+        Some(SubCommand::Flame(_)) => unreachable!(), // Handled above
         None => {
             println!("marie-ssg {}", VERSION);
             println!("Use --help for usage information");

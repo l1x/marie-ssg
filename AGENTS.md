@@ -14,7 +14,7 @@ This document provides essential context for AI agents working on the Marie SSG 
 - Syntax highlighting with Autumnus (10 languages)
 - Watch mode support on macOS
 - RSS feed and sitemap generation
-- Clean URL support (`/post/` instead of `/post.html`)
+- Clean URL support (`something/index.html` instead of `something.html`)
 
 ## Configuration Options
 

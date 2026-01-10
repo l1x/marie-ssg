@@ -8,7 +8,7 @@ use std::{
 };
 use thiserror::Error;
 use time::OffsetDateTime;
-use tracing::{debug, error};
+use tracing::{debug, error, instrument};
 
 use crate::syntax::highlight_html;
 use crate::utils::add_header_anchors;
@@ -155,6 +155,7 @@ pub(crate) enum ContentError {
 /// let content = load_content(&PathBuf::from("content/blog/post.md"))?;
 /// println!("Title: {}", content.meta.title);
 /// ```
+#[instrument(skip_all)]
 pub(crate) fn load_content(path: &PathBuf) -> Result<Content, ContentError> {
     // 1. Load the metadata from the corresponding `.meta.toml` file.
     let meta = load_metadata(path)?;
@@ -248,6 +249,7 @@ pub(crate) fn load_metadata(markdown_path: &Path) -> Result<ContentMeta, Content
 /// let html = convert_content_with_highlighting(&content, Path::new("test.md"), true, "github_dark", false, false);
 /// assert!(html.contains("<h1>Hello World</h1>"));
 /// ```
+#[instrument(skip_all)]
 pub(crate) fn convert_content_with_highlighting(
     content: &Content,
     path: &Path,

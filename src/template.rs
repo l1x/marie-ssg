@@ -4,6 +4,7 @@ use minijinja::{Environment, State, Value, context, path_loader};
 use minijinja_contrib::add_to_environment;
 use time::OffsetDateTime;
 use time::macros::format_description;
+use tracing::instrument;
 
 use crate::{
     asset_hash::AssetManifest,
@@ -129,6 +130,7 @@ fn build_content_item(lc: &crate::LoadedContent, config: &Config) -> ContentItem
     }
 }
 
+#[instrument(skip_all)]
 pub(crate) fn render_index_from_loaded(
     env: &Environment,
     config: &Config,
@@ -159,6 +161,7 @@ pub(crate) fn render_index_from_loaded(
     tmpl.render(context)
 }
 
+#[instrument(skip_all)]
 pub(crate) fn render_html(
     env: &Environment,
     html: &str,

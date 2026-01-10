@@ -145,6 +145,10 @@ See [agents](AGENTS.md)
   - Map old URLs to new URLs for migrations
   - Generates HTML meta-refresh redirect files
   - Works on any static hosting platform
+- Added `marie-ssg flame` command for performance profiling
+  - Generates interactive flamechart SVG
+  - Visualize time spent in each build phase
+  - Usage: `marie-ssg flame -c site.toml -o flamechart.svg`
 - Updated documentation with URL output format table
 
 ### v1.3.0 (2026-01-08)

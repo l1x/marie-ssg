@@ -22,6 +22,9 @@ pub(crate) enum RunError {
     //
     #[error("Failed to write content")]
     Write(#[from] WriteError),
+    //
+    #[error("{0}")]
+    IoError(String),
 }
 
 #[derive(Error, Debug)]

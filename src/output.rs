@@ -6,7 +6,7 @@ use std::{
     path::{Path, PathBuf},
 };
 use thiserror::Error;
-use tracing::{debug, info};
+use tracing::{debug, info, instrument};
 use walkdir::WalkDir;
 
 use crate::{config::Config, error::StaticError};
@@ -198,6 +198,7 @@ fn copy_root_static_files(config: &Config) -> Result<usize, StaticError> {
     Ok(copied_count)
 }
 
+#[instrument(skip_all)]
 pub(crate) fn write_output_file(output_path: &Path, content: &str) -> Result<(), WriteError> {
     debug!("io::write → {:?} ({} bytes)", output_path, content.len());
     // Create parent directories if they don't exist

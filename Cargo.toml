@@ -60,7 +60,9 @@ serde = { version = "1", features = ["derive"] }
 thiserror = { version = "2" }
 toml = { version = "0" }
 tracing = { version = "0" }
+tracing-flame = { version = "0" }
 tracing-subscriber = { version = "0", features = ["env-filter", "time"] }
+inferno = { version = "0", default-features = false }
 walkdir = { version = "2" }
 
 [dev-dependencies]

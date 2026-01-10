@@ -15,6 +15,7 @@ Marie is a static site generator that converts markdown files with TOML metadata
 marie-ssg build              # Build the site
 marie-ssg build -c prod.toml # Build with custom config
 marie-ssg watch              # Watch and rebuild on changes (macOS)
+marie-ssg flame              # Build with profiling, output flamechart.svg
 marie-ssg guide              # Show this guide
 ```
 
@@ -373,6 +374,17 @@ output/
     ├── index.html
     └── about.html
 ```
+
+### Flamechart Profiling
+
+Generate a flamechart SVG to visualize build performance:
+```bash
+marie-ssg flame                    # Output: flamechart.svg
+marie-ssg flame -o build.svg       # Custom output path
+marie-ssg flame -c prod.toml       # Custom config
+```
+
+Open the SVG in a browser for an interactive flamechart showing time spent in each build phase.
 
 ## Tips
 
