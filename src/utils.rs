@@ -3,7 +3,6 @@
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use time::OffsetDateTime;
-use time::macros::format_description;
 use walkdir::WalkDir;
 
 use crate::config::Config;
@@ -68,26 +67,26 @@ pub(crate) fn slugify(text: &str) -> String {
     collapsed
 }
 
-/// Extracts a clean slug from a filename, stripping any date prefix.
+/// Extracts the stem from a filename, removing extension and any date prefix.
 ///
-/// Handles filenames with optional YYYY-MM-DD date prefix and returns
-/// just the slug portion without the extension.
+/// The stem is the meaningful identifier portion of the filename. For backwards
+/// compatibility, this also strips YYYY-MM-DD- date prefixes if present.
 ///
 /// # Arguments
-/// * `filename` - The filename to extract slug from (e.g., "2025-12-29-my-article.md")
+/// * `filename` - The filename to extract stem from (e.g., "my-article.md")
 ///
 /// # Returns
-/// The slug without date prefix or extension (e.g., "my-article")
+/// The filename stem without extension (e.g., "my-article")
 ///
 /// # Examples
 /// ```
-/// use your_crate::extract_slug_from_filename;
+/// use your_crate::extract_stem_from_filename;
 ///
-/// assert_eq!(extract_slug_from_filename("2025-12-29-my-article.md"), "my-article");
-/// assert_eq!(extract_slug_from_filename("my-article.md"), "my-article");
-/// assert_eq!(extract_slug_from_filename("2025-12-29-my-article"), "my-article");
+/// assert_eq!(extract_stem_from_filename("2025-12-29-my-article.md"), "my-article");
+/// assert_eq!(extract_stem_from_filename("my-article.md"), "my-article");
+/// assert_eq!(extract_stem_from_filename("2025-12-29-my-article"), "my-article");
 /// ```
-pub(crate) fn extract_slug_from_filename(filename: &str) -> String {
+pub(crate) fn extract_stem_from_filename(filename: &str) -> String {
     // Remove extension if present
     let name = filename
         .strip_suffix(".md")
@@ -307,130 +306,89 @@ pub(crate) fn find_markdown_files(content_dir: &str) -> Vec<PathBuf> {
     markdown_files
 }
 
-/// Adds a date prefix to a file path in the format: YYYY-MM-DD-filename
+/// Resolves a URL pattern by replacing placeholders with actual values.
+///
+/// Supports the following placeholders:
+/// - `{stem}` - The stem extracted from the filename (without extension)
+/// - `{date}` - Full date in YYYY-MM-DD format from meta.date
+/// - `{year}` - Year (4 digits) from meta.date
+/// - `{month}` - Month (2 digits, zero-padded) from meta.date
+/// - `{day}` - Day (2 digits, zero-padded) from meta.date
 ///
 /// # Arguments
-/// * `output_path` - The original output path (e.g., "out/posts/my-post.html")
-/// * `date` - The date to use for the prefix
+/// * `pattern` - The URL pattern template (e.g., "{year}/{month}/{day}/{stem}")
+/// * `filename` - The original filename (e.g., "my-article.md")
+/// * `date` - The publication date from meta.date
 ///
 /// # Returns
-/// A new PathBuf with the date prefix (e.g., "out/posts/2023-05-15-my-post.html")
-pub(crate) fn add_date_prefix(output_path: PathBuf, date: &OffsetDateTime) -> PathBuf {
-    // Format validated at compile time via macro
-    const FORMAT: &[time::format_description::FormatItem<'static>] =
-        format_description!("[year]-[month]-[day]");
-    let date_str = date
-        .format(&FORMAT)
-        .unwrap_or_else(|_| "0000-00-00".to_string());
-
-    // Get the parent directory and file name separately
-    let parent_dir = output_path.parent().unwrap_or_else(|| Path::new(""));
-    let file_stem = output_path
-        .file_stem()
-        .unwrap_or_default()
-        .to_string_lossy();
-
-    // Create the new file name with date prefix
-    let new_file_name = format!("{}-{}", date_str, file_stem);
-
-    // Combine the parent directory with the new file name and add .html extension
-    parent_dir.join(new_file_name).with_extension("html")
-}
-
-/// Converts a content file path to its corresponding output HTML path.
-///
-/// This function transforms a markdown content file path into the path where
-/// the generated HTML should be written. It replaces the content directory
-/// with the output directory and changes the file extension from `.md` to `.html`.
-///
-/// # Arguments
-/// * `file` - Path to the source markdown content file
-/// * `content_dir` - Root directory containing the content files
-/// * `output_dir` - Target directory where HTML files should be written
-///
-/// # Returns
-/// A `PathBuf` representing the output HTML file path. If the input file is not
-/// under the content directory, returns a path to "error.html" in the output directory.
+/// The resolved URL pattern with all placeholders replaced
 ///
 /// # Examples
 /// ```
-/// use std::path::PathBuf;
-/// use your_crate::get_output_path;
+/// use time::macros::datetime;
 ///
-/// let input_file = PathBuf::from("src/content/blog/hello-world.md");
-/// let output_path = get_output_path(&input_file, "src/content", "dist");
-/// assert_eq!(output_path, PathBuf::from("dist/blog/hello-world.html"));
+/// let date = datetime!(2025-12-12 02:02:02 UTC);
+/// let result = resolve_url_pattern("{date}-{stem}", "my-article.md", &date);
+/// assert_eq!(result, "2025-12-12-my-article");
 ///
-/// // File not under content directory falls back to error.html
-/// let external_file = PathBuf::from("other/location/file.md");
-/// let error_path = get_output_path(&external_file, "src/content", "dist");
-/// assert_eq!(error_path, PathBuf::from("dist/error.html"));
+/// let result = resolve_url_pattern("{year}/{month}/{day}/{stem}", "my-article.md", &date);
+/// assert_eq!(result, "2025/12/12/my-article");
 /// ```
-///
-/// # Behavior
-/// - Preserves the directory structure relative to the content directory
-/// - Changes file extension from `.md`/`.markdown` to `.html`
-/// - Returns "error.html" path if the file is not under the content directory
-/// - Handles both relative and absolute paths correctly
-pub(crate) fn get_output_path(file: &Path, content_dir: &str, output_dir: &str) -> PathBuf {
-    file.strip_prefix(content_dir)
-        .map(|rel_path| {
-            PathBuf::from(output_dir)
-                .join(rel_path)
-                .with_extension("html")
-        })
-        .unwrap_or_else(|_| PathBuf::from(output_dir).join("error.html"))
+pub(crate) fn resolve_url_pattern(pattern: &str, filename: &str, date: &OffsetDateTime) -> String {
+    let stem = extract_stem_from_filename(filename);
+    let year = format!("{:04}", date.year());
+    let month = format!("{:02}", date.month() as u8);
+    let day = format!("{:02}", date.day());
+    let date_str = format!("{}-{}-{}", year, month, day);
+
+    pattern
+        .replace("{stem}", &stem)
+        .replace("{date}", &date_str)
+        .replace("{year}", &year)
+        .replace("{month}", &month)
+        .replace("{day}", &day)
 }
 
-/// Converts a content file path to a clean URL output path.
+/// Builds the output file path from a resolved URL pattern.
 ///
-/// This function transforms a markdown content file path into a clean URL structure
-/// where each content item gets its own directory with an index.html file.
-/// Date prefixes are stripped from the slug.
+/// Combines the output directory, content type, and resolved pattern to create
+/// the final output path. When `clean_urls` is enabled, appends `/index.html`;
+/// otherwise appends `.html`.
 ///
 /// # Arguments
-/// * `file` - Path to the source markdown content file
-/// * `content_dir` - Root directory containing the content files
-/// * `output_dir` - Target directory where HTML files should be written
+/// * `content_type` - The content type directory (e.g., "articles", "blog")
+/// * `resolved_pattern` - The resolved URL pattern (e.g., "2025-12-12/my-article")
+/// * `output_dir` - The output directory (e.g., "dist")
+/// * `clean_urls` - Whether to use clean URL structure
 ///
 /// # Returns
-/// A `PathBuf` representing the clean URL output path (e.g., `dist/blog/my-article/index.html`)
+/// The full output path as a PathBuf
 ///
 /// # Examples
 /// ```
-/// use std::path::PathBuf;
-/// use your_crate::get_clean_output_path;
+/// // clean_urls = false
+/// let path = build_output_path("articles", "my-article", "dist", false);
+/// assert_eq!(path, PathBuf::from("dist/articles/my-article.html"));
 ///
-/// // Standard file
-/// let input = PathBuf::from("content/blog/my-article.md");
-/// let output = get_clean_output_path(&input, "content", "dist");
-/// assert_eq!(output, PathBuf::from("dist/blog/my-article/index.html"));
-///
-/// // File with date prefix - date is stripped
-/// let input = PathBuf::from("content/blog/2025-12-29-my-article.md");
-/// let output = get_clean_output_path(&input, "content", "dist");
-/// assert_eq!(output, PathBuf::from("dist/blog/my-article/index.html"));
+/// // clean_urls = true
+/// let path = build_output_path("articles", "2025-12-12/my-article", "dist", true);
+/// assert_eq!(path, PathBuf::from("dist/articles/2025-12-12/my-article/index.html"));
 /// ```
-pub(crate) fn get_clean_output_path(file: &Path, content_dir: &str, output_dir: &str) -> PathBuf {
-    file.strip_prefix(content_dir)
-        .map(|rel_path| {
-            // Get the parent directory (content type) and filename
-            let parent = rel_path.parent().unwrap_or(Path::new(""));
-            let filename = rel_path
-                .file_name()
-                .and_then(|f| f.to_str())
-                .unwrap_or("index");
+pub(crate) fn build_output_path(
+    content_type: &str,
+    resolved_pattern: &str,
+    output_dir: &str,
+    clean_urls: bool,
+) -> PathBuf {
+    let base = PathBuf::from(output_dir)
+        .join(content_type)
+        .join(resolved_pattern);
 
-            // Extract clean slug from filename (strips date prefix and extension)
-            let slug = extract_slug_from_filename(filename);
-
-            // Build: output_dir/parent/slug/index.html
-            PathBuf::from(output_dir)
-                .join(parent)
-                .join(&slug)
-                .join("index.html")
-        })
-        .unwrap_or_else(|_| PathBuf::from(output_dir).join("error/index.html"))
+    if clean_urls {
+        base.join("index.html")
+    } else {
+        base.with_extension("html")
+    }
 }
 
 /// Retrieves the template path for a specific content type from the configuration.
@@ -519,6 +477,7 @@ mod tests {
             ContentTypeConfig {
                 content_template: "project.html".to_string(),
                 index_template: "projects_index.html".to_string(),
+                url_pattern: None,
                 output_naming: Some("default".to_string()),
                 rss_include: None,
             },
@@ -528,6 +487,7 @@ mod tests {
             ContentTypeConfig {
                 content_template: "blog_post.html".to_string(),
                 index_template: "blog_index.html".to_string(),
+                url_pattern: None,
                 output_naming: Some("default".to_string()),
                 rss_include: None,
             },
@@ -557,16 +517,8 @@ mod tests {
             },
             content: content_types,
             dynamic: HashMap::new(),
+            redirects: HashMap::new(),
         }
-    }
-
-    #[test]
-    fn test_get_output_path_converts_md_to_html() {
-        let input = PathBuf::from("src/content/projects/local-rs.md");
-        let result = get_output_path(&input, "src/content", "out");
-        let expected = PathBuf::from("out/projects/local-rs.html");
-
-        assert_eq!(result, expected);
     }
 
     #[test]
@@ -599,26 +551,6 @@ mod tests {
         let result = get_content_type_template(&config, "unknown");
 
         assert_eq!(result, "default.html");
-    }
-
-    #[test]
-    fn test_get_output_path() {
-        let input = PathBuf::from("src/content/projects/local-rs.md");
-        let result = get_output_path(&input, "src/content", "out");
-        assert_eq!(result, PathBuf::from("out/projects/local-rs.html"));
-
-        // Test with different structure
-        let input2 = PathBuf::from("content/blog/post.md");
-        let result2 = get_output_path(&input2, "content", "dist");
-        assert_eq!(result2, PathBuf::from("dist/blog/post.html"));
-    }
-
-    #[test]
-    fn test_get_output_path_error_case() {
-        // Test file not under content directory
-        let input = PathBuf::from("some/other/dir/file.md");
-        let result = get_output_path(&input, "src/content", "out");
-        assert_eq!(result, PathBuf::from("out/error.html"));
     }
 
     #[test]
@@ -705,45 +637,6 @@ mod tests {
 
         let result = find_markdown_files(content_dir.to_str().unwrap());
         assert_eq!(result.len(), 0);
-    }
-
-    #[test]
-    fn test_add_date_prefix() {
-        use time::macros::datetime;
-
-        let date = datetime!(2023-05-15 0:00:00 UTC);
-
-        let input = PathBuf::from("out/posts/my-post.html");
-        let result = add_date_prefix(input, &date);
-
-        assert_eq!(result, PathBuf::from("out/posts/2023-05-15-my-post.html"));
-    }
-
-    #[test]
-    fn test_add_date_prefix_nested_path() {
-        use time::macros::datetime;
-
-        let date = datetime!(2024-12-31 0:00:00 UTC);
-
-        let input = PathBuf::from("dist/blog/tech/rust/article.html");
-        let result = add_date_prefix(input, &date);
-
-        assert_eq!(
-            result,
-            PathBuf::from("dist/blog/tech/rust/2024-12-31-article.html")
-        );
-    }
-
-    #[test]
-    fn test_add_date_prefix_root_file() {
-        use time::macros::datetime;
-
-        let date = datetime!(2023-01-01 0:00:00 UTC);
-
-        let input = PathBuf::from("output.html");
-        let result = add_date_prefix(input, &date);
-
-        assert_eq!(result, PathBuf::from("2023-01-01-output.html"));
     }
 
     #[test]
@@ -850,83 +743,166 @@ mod tests {
         assert_eq!(result, html);
     }
 
-    // Tests for extract_slug_from_filename
+    // Tests for extract_stem_from_filename
     #[test]
-    fn test_extract_slug_from_filename_with_date_prefix() {
+    fn test_extract_stem_from_filename_with_date_prefix() {
         assert_eq!(
-            extract_slug_from_filename("2025-12-29-my-article.md"),
+            extract_stem_from_filename("2025-12-29-my-article.md"),
             "my-article"
         );
         assert_eq!(
-            extract_slug_from_filename("2024-01-15-hello-world.md"),
+            extract_stem_from_filename("2024-01-15-hello-world.md"),
             "hello-world"
         );
     }
 
     #[test]
-    fn test_extract_slug_from_filename_without_date_prefix() {
-        assert_eq!(extract_slug_from_filename("my-article.md"), "my-article");
-        assert_eq!(extract_slug_from_filename("hello-world.md"), "hello-world");
+    fn test_extract_stem_from_filename_without_date_prefix() {
+        assert_eq!(extract_stem_from_filename("my-article.md"), "my-article");
+        assert_eq!(extract_stem_from_filename("hello-world.md"), "hello-world");
     }
 
     #[test]
-    fn test_extract_slug_from_filename_different_extensions() {
+    fn test_extract_stem_from_filename_different_extensions() {
         assert_eq!(
-            extract_slug_from_filename("2025-12-29-article.markdown"),
+            extract_stem_from_filename("2025-12-29-article.markdown"),
             "article"
         );
         assert_eq!(
-            extract_slug_from_filename("2025-12-29-article.html"),
+            extract_stem_from_filename("2025-12-29-article.html"),
             "article"
         );
-        assert_eq!(extract_slug_from_filename("2025-12-29-article"), "article");
+        assert_eq!(extract_stem_from_filename("2025-12-29-article"), "article");
     }
 
     #[test]
-    fn test_extract_slug_from_filename_edge_cases() {
+    fn test_extract_stem_from_filename_edge_cases() {
         // Invalid date format - should keep as is
         assert_eq!(
-            extract_slug_from_filename("2025-1-29-article.md"),
+            extract_stem_from_filename("2025-1-29-article.md"),
             "2025-1-29-article"
         );
         // Too short to have date prefix
-        assert_eq!(extract_slug_from_filename("short.md"), "short");
+        assert_eq!(extract_stem_from_filename("short.md"), "short");
         // Exactly 11 chars but not a date
         assert_eq!(
-            extract_slug_from_filename("abcd-ef-gh-article.md"),
+            extract_stem_from_filename("abcd-ef-gh-article.md"),
             "abcd-ef-gh-article"
         );
     }
 
-    // Tests for get_clean_output_path
+    // Tests for resolve_url_pattern
     #[test]
-    fn test_get_clean_output_path_basic() {
-        let input = PathBuf::from("content/blog/my-article.md");
-        let result = get_clean_output_path(&input, "content", "dist");
-        assert_eq!(result, PathBuf::from("dist/blog/my-article/index.html"));
+    fn test_resolve_url_pattern_filename_only() {
+        use time::macros::datetime;
+        let date = datetime!(2025-12-12 02:02:02 UTC);
+
+        let result = resolve_url_pattern("{stem}", "my-article.md", &date);
+        assert_eq!(result, "my-article");
     }
 
     #[test]
-    fn test_get_clean_output_path_with_date_prefix() {
-        let input = PathBuf::from("content/blog/2025-12-29-my-article.md");
-        let result = get_clean_output_path(&input, "content", "dist");
-        assert_eq!(result, PathBuf::from("dist/blog/my-article/index.html"));
+    fn test_resolve_url_pattern_date_prefix() {
+        use time::macros::datetime;
+        let date = datetime!(2025-12-12 02:02:02 UTC);
+
+        let result = resolve_url_pattern("{date}-{stem}", "my-article.md", &date);
+        assert_eq!(result, "2025-12-12-my-article");
     }
 
     #[test]
-    fn test_get_clean_output_path_nested_directory() {
-        let input = PathBuf::from("src/content/projects/rust/my-project.md");
-        let result = get_clean_output_path(&input, "src/content", "out");
+    fn test_resolve_url_pattern_full_hierarchy() {
+        use time::macros::datetime;
+        let date = datetime!(2025-12-12 02:02:02 UTC);
+
+        let result = resolve_url_pattern("{year}/{month}/{day}/{stem}", "my-article.md", &date);
+        assert_eq!(result, "2025/12/12/my-article");
+    }
+
+    #[test]
+    fn test_resolve_url_pattern_year_month() {
+        use time::macros::datetime;
+        let date = datetime!(2025-06-15 10:30:00 UTC);
+
+        let result = resolve_url_pattern("{year}-{month}/{stem}", "hello-world.md", &date);
+        assert_eq!(result, "2025-06/hello-world");
+    }
+
+    #[test]
+    fn test_resolve_url_pattern_strips_date_from_filename() {
+        use time::macros::datetime;
+        // The filename has a date prefix, but we use meta.date for the pattern
+        let date = datetime!(2025-12-12 02:02:02 UTC);
+
+        let result = resolve_url_pattern("{date}-{stem}", "2024-01-15-old-article.md", &date);
+        // Should use meta.date (2025-12-12) and strip date from filename
+        assert_eq!(result, "2025-12-12-old-article");
+    }
+
+    #[test]
+    fn test_resolve_url_pattern_date_directory() {
+        use time::macros::datetime;
+        let date = datetime!(2025-12-12 02:02:02 UTC);
+
+        let result = resolve_url_pattern("{date}/{stem}", "my-article.md", &date);
+        assert_eq!(result, "2025-12-12/my-article");
+    }
+
+    #[test]
+    fn test_resolve_url_pattern_zero_padded_months() {
+        use time::macros::datetime;
+        let date = datetime!(2025-01-05 10:00:00 UTC);
+
+        let result = resolve_url_pattern("{year}/{month}/{day}/{stem}", "post.md", &date);
+        assert_eq!(result, "2025/01/05/post");
+    }
+
+    // Tests for build_output_path
+    #[test]
+    fn test_build_output_path_no_clean_urls() {
+        let result = build_output_path("articles", "my-article", "dist", false);
+        assert_eq!(result, PathBuf::from("dist/articles/my-article.html"));
+    }
+
+    #[test]
+    fn test_build_output_path_with_clean_urls() {
+        let result = build_output_path("articles", "my-article", "dist", true);
+        assert_eq!(result, PathBuf::from("dist/articles/my-article/index.html"));
+    }
+
+    #[test]
+    fn test_build_output_path_with_date_prefix_no_clean_urls() {
+        let result = build_output_path("articles", "2025-12-12-my-article", "dist", false);
         assert_eq!(
             result,
-            PathBuf::from("out/projects/rust/my-project/index.html")
+            PathBuf::from("dist/articles/2025-12-12-my-article.html")
         );
     }
 
     #[test]
-    fn test_get_clean_output_path_file_not_in_content_dir() {
-        let input = PathBuf::from("other/location/file.md");
-        let result = get_clean_output_path(&input, "content", "dist");
-        assert_eq!(result, PathBuf::from("dist/error/index.html"));
+    fn test_build_output_path_with_date_prefix_clean_urls() {
+        let result = build_output_path("articles", "2025-12-12-my-article", "dist", true);
+        assert_eq!(
+            result,
+            PathBuf::from("dist/articles/2025-12-12-my-article/index.html")
+        );
+    }
+
+    #[test]
+    fn test_build_output_path_with_nested_pattern() {
+        let result = build_output_path("articles", "2025/12/12/my-article", "dist", true);
+        assert_eq!(
+            result,
+            PathBuf::from("dist/articles/2025/12/12/my-article/index.html")
+        );
+    }
+
+    #[test]
+    fn test_build_output_path_with_date_directory_no_clean_urls() {
+        let result = build_output_path("articles", "2025-12-12/my-article", "dist", false);
+        assert_eq!(
+            result,
+            PathBuf::from("dist/articles/2025-12-12/my-article.html")
+        );
     }
 }

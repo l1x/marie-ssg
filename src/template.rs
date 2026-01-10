@@ -219,6 +219,7 @@ mod tests {
             },
             content: HashMap::new(),
             dynamic: HashMap::new(),
+            redirects: HashMap::new(),
         }
     }
 

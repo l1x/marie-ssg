@@ -12,6 +12,7 @@ mod content;
 mod error;
 mod guide;
 mod output;
+mod redirect;
 mod rss;
 mod sitemap;
 mod syntax;

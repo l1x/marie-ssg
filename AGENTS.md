@@ -14,7 +14,7 @@ This document provides essential context for AI agents working on the Marie SSG 
 - Syntax highlighting with Autumnus (10 languages)
 - Watch mode support on macOS
 - RSS feed and sitemap generation
-- Clean URL support (`/slug/` instead of `/slug.html`)
+- Clean URL support (`/post/` instead of `/post.html`)
 
 ## Configuration Options
 
@@ -37,7 +37,7 @@ This document provides essential context for AI agents working on the Marie SSG 
 | `rss_enabled` | bool | `true` | Generate RSS feed (feed.xml) |
 | `allow_dangerous_html` | bool | `false` | Allow raw HTML in markdown |
 | `header_uri_fragment` | bool | `false` | Add anchor links to headers |
-| `clean_urls` | bool | `false` | Output as `slug/index.html` instead of `slug.html` |
+| `clean_urls` | bool | `false` | Output as `post/index.html` instead of `post.html` |
 
 ### Content Type Config (`[content.<type>]`)
 

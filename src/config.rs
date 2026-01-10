@@ -19,6 +19,11 @@ pub(crate) struct Config {
     /// Custom variables accessible in templates
     #[serde(default)]
     pub dynamic: HashMap<String, String>,
+
+    /// URL redirect mappings: old path -> new path
+    /// Generates HTML redirect files at old paths pointing to new paths
+    #[serde(default)]
+    pub redirects: HashMap<String, String>,
 }
 
 impl Config {
@@ -107,8 +112,14 @@ pub(crate) enum ConfigError {
 pub(crate) struct ContentTypeConfig {
     pub index_template: String,
     pub content_template: String,
+    /// URL pattern template with placeholders: {filename}, {date}, {year}, {month}, {day}
+    /// Example: "{date}-{filename}" or "{year}/{month}/{day}/{filename}"
     #[serde(default)]
-    pub output_naming: Option<String>, // Options: "default" or "date"
+    pub url_pattern: Option<String>,
+    /// DEPRECATED: Use `url_pattern` instead. Options: "default" or "date"
+    /// Maps to: "default" -> "{filename}", "date" -> "{date}-{filename}"
+    #[serde(default)]
+    pub output_naming: Option<String>,
     #[serde(default)]
     pub rss_include: Option<bool>, // Include in RSS feed (default: true if None)
 }
@@ -517,5 +528,107 @@ clean_urls = true
             config.site.clean_urls,
             "clean_urls should be true when explicitly set"
         );
+    }
+
+    #[test]
+    fn test_config_redirects_default() {
+        let config = Config::from_str(minimal_config_toml()).unwrap();
+
+        assert!(
+            config.redirects.is_empty(),
+            "redirects should default to empty"
+        );
+    }
+
+    #[test]
+    fn test_config_redirects_with_mappings() {
+        let toml = r#"
+[site]
+title = "Test Site"
+tagline = "A test tagline"
+domain = "example.com"
+author = "Test Author"
+output_dir = "output"
+content_dir = "content"
+template_dir = "templates"
+static_dir = "static"
+site_index_template = "index.html"
+
+[redirects]
+"/old-page/" = "/new-page/"
+"/articles/legacy-post/" = "/articles/2025-01-01-legacy-post/"
+"/about-us/" = "/about/"
+"#;
+
+        let config = Config::from_str(toml).unwrap();
+
+        assert_eq!(config.redirects.len(), 3);
+        assert_eq!(config.redirects.get("/old-page/").unwrap(), "/new-page/");
+        assert_eq!(
+            config.redirects.get("/articles/legacy-post/").unwrap(),
+            "/articles/2025-01-01-legacy-post/"
+        );
+        assert_eq!(config.redirects.get("/about-us/").unwrap(), "/about/");
+    }
+
+    #[test]
+    fn test_config_redirects_empty_section() {
+        let toml = r#"
+[site]
+title = "Test Site"
+tagline = "A test tagline"
+domain = "example.com"
+author = "Test Author"
+output_dir = "output"
+content_dir = "content"
+template_dir = "templates"
+static_dir = "static"
+site_index_template = "index.html"
+
+[redirects]
+"#;
+
+        let config = Config::from_str(toml).unwrap();
+
+        assert!(
+            config.redirects.is_empty(),
+            "empty redirects section should result in empty map"
+        );
+    }
+
+    #[test]
+    fn test_config_url_pattern() {
+        let toml = r#"
+[site]
+title = "Test Site"
+tagline = "A test tagline"
+domain = "example.com"
+author = "Test Author"
+output_dir = "output"
+content_dir = "content"
+template_dir = "templates"
+static_dir = "static"
+site_index_template = "index.html"
+
+[content.articles]
+index_template = "articles_index.html"
+content_template = "article.html"
+url_pattern = "{year}/{month}/{day}/{filename}"
+
+[content.pages]
+index_template = "pages_index.html"
+content_template = "page.html"
+"#;
+
+        let config = Config::from_str(toml).unwrap();
+
+        let articles = config.content.get("articles").unwrap();
+        assert_eq!(
+            articles.url_pattern,
+            Some("{year}/{month}/{day}/{filename}".to_string())
+        );
+
+        let pages = config.content.get("pages").unwrap();
+        assert!(pages.url_pattern.is_none());
     }
 }

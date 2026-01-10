@@ -14,7 +14,7 @@ This document provides essential context for AI agents working on the Marie SSG 
 - Syntax highlighting with Autumnus (10 languages)
 - Watch mode support on macOS
 - RSS feed and sitemap generation
-- Clean URL support (`/slug/` instead of `/slug.html`)
+- Clean URL support (`/post/` instead of `/post.html`)
 
 ## Configuration Options
 
@@ -37,7 +37,7 @@ This document provides essential context for AI agents working on the Marie SSG 
 | `rss_enabled` | bool | `true` | Generate RSS feed (feed.xml) |
 | `allow_dangerous_html` | bool | `false` | Allow raw HTML in markdown |
 | `header_uri_fragment` | bool | `false` | Add anchor links to headers |
-| `clean_urls` | bool | `false` | Output as `slug/index.html` instead of `slug.html` |
+| `clean_urls` | bool | `false` | Output as `post/index.html` instead of `post.html` |
 
 ### Content Type Config (`[content.<type>]`)
 
@@ -45,8 +45,46 @@ This document provides essential context for AI agents working on the Marie SSG 
 |--------|------|---------|-------------|
 | `index_template` | string | required | Template for content type index |
 | `content_template` | string | required | Template for individual items |
-| `output_naming` | string | `"default"` | `"default"` or `"date"` (YYYY-MM-DD prefix) |
+| `url_pattern` | string | `"{stem}"` | URL pattern with placeholders |
+| `output_naming` | string | (deprecated) | Use `url_pattern` instead |
 | `rss_include` | bool | `true` | Include this type in RSS feed |
+
+### URL Pattern System
+
+**Placeholders:** `{stem}` (stem from file), `{date}`, `{year}`, `{month}`, `{day}` (from meta.date)
+
+**Data Sources:**
+- `{stem}` → filename stem (without extension)
+- `{date}`, `{year}`, `{month}`, `{day}` → from meta.date in `.meta.toml`
+
+**Example Input:**
+```
+File: content/articles/agentic-project-management.md
+meta.date: 2025-12-12T02:02:02Z
+```
+
+**Output Examples:**
+
+| `url_pattern` | `clean_urls` | Output |
+|---------------|--------------|--------|
+| `{stem}` | `false` | `/articles/agentic-project-management.html` |
+| `{stem}` | `true` | `/articles/agentic-project-management/index.html` |
+| `{date}-{stem}` | `true` | `/articles/2025-12-12-agentic-project-management/index.html` |
+| `{year}/{month}/{day}/{stem}` | `true` | `/articles/2025/12/12/agentic-project-management/index.html` |
+
+**Backwards Compatibility:** `output_naming = "date"` maps to `url_pattern = "{date}-{stem}"`
+
+### Redirects Config (`[redirects]`)
+
+Explicit URL redirect mappings for migrations:
+
+```toml
+[redirects]
+"/old-path/" = "/new-path/"
+"/articles/old-slug/" = "/articles/2025-12-29-new-slug/"
+```
+
+Generates HTML redirect files with meta-refresh at each "from" path.
 
 ### Content Metadata (TOML frontmatter)
 

@@ -63,23 +63,66 @@ See [examples/site.toml](examples/site.toml) for a complete configuration refere
 
 | Option | Type | Default | Description |
 |--------|------|---------|-------------|
-| `clean_urls` | bool | `false` | Output as `slug/index.html` for SEO-friendly URLs |
+| `clean_urls` | bool | `false` | Output as `post/index.html` for SEO-friendly URLs |
 | `rss_enabled` | bool | `true` | Generate RSS feed (feed.xml) |
 | `sitemap_enabled` | bool | `true` | Generate sitemap.xml |
 | `header_uri_fragment` | bool | `false` | Add anchor links to headers |
 | `allow_dangerous_html` | bool | `false` | Allow raw HTML in markdown |
 | `syntax_highlighting_enabled` | bool | `true` | Enable code syntax highlighting |
 
-### Clean URLs Example
+### URL Output Formats
+
+The URL format is controlled by `url_pattern` (per content type) and `clean_urls` (site-level).
+
+**Data Sources:**
+
+| Component | Source |
+|-----------|--------|
+| `{stem}` | filename stem (without extension) |
+| `{date}`, `{year}`, `{month}`, `{day}` | meta.date from `.meta.toml` |
+| content type directory | parent directory of content file |
+
+**Example Input:**
+```
+File: content/articles/agentic-project-management.md
+meta.date: 2025-12-12T02:02:02Z
+```
+
+**Output Examples:**
+
+| `url_pattern` | `clean_urls` | Output |
+|---------------|--------------|--------|
+| `{stem}` | `false` | `/articles/agentic-project-management.html` |
+| `{stem}` | `true` | `/articles/agentic-project-management/index.html` |
+| `{date}-{stem}` | `false` | `/articles/2025-12-12-agentic-project-management.html` |
+| `{date}-{stem}` | `true` | `/articles/2025-12-12-agentic-project-management/index.html` |
+| `{date}/{stem}` | `true` | `/articles/2025-12-12/agentic-project-management/index.html` |
+| `{year}/{month}/{day}/{stem}` | `true` | `/articles/2025/12/12/agentic-project-management/index.html` |
 
 ```toml
 [site]
-clean_urls = true  # /blog/my-post/ instead of /blog/my-post.html
+clean_urls = true
+
+[content.articles]
+index_template = "articles_index.html"
+content_template = "article.html"
+url_pattern = "{date}-{stem}"  # Flexible URL pattern
 ```
 
-When enabled:
-- `content/blog/2025-01-07-my-post.md` → `output/blog/my-post/index.html`
-- URL: `/blog/my-post/` (date prefix stripped, trailing slash)
+**Backwards Compatibility:** `output_naming = "date"` maps to `url_pattern = "{date}-{stem}"`
+
+### URL Redirects
+
+Configure explicit URL redirects for migrations, renames, or restructures:
+
+```toml
+[redirects]
+"/articles/old-slug/" = "/articles/2025-12-29-new-slug/"
+"/blog/legacy-post/" = "/articles/legacy-post/"
+"/about-us/" = "/about/"
+```
+
+Generates HTML redirect files with meta-refresh at each "from" path, redirecting to the "to" URL. Works on any static hosting (S3, CloudFront, GitHub Pages, nginx).
 
 ## Examples
 
@@ -91,12 +134,31 @@ See [agents](AGENTS.md)
 
 ## Version History
 
+### v1.4.0 (2026-01-10)
+
+- Added flexible `url_pattern` system for URL customization
+  - Placeholders: `{stem}`, `{date}`, `{year}`, `{month}`, `{day}`
+  - Date from meta.date, stem from filename
+  - Examples: `{date}-{stem}`, `{year}/{month}/{day}/{stem}`
+  - Backwards compatible: `output_naming = "date"` maps to `{date}-{stem}`
+- Added `[redirects]` config section for explicit URL redirects
+  - Map old URLs to new URLs for migrations
+  - Generates HTML meta-refresh redirect files
+  - Works on any static hosting platform
+- Updated documentation with URL output format table
+
+### v1.3.0 (2026-01-08)
+
+- Added content-based asset hashing for cache busting
+  - CSS/JS files get content hash in filename (e.g., `style.a1b2c3d4.css`)
+  - Enable via `asset_hashing_enabled = true`
+- Added optional `asset_manifest_path` to export hash mappings as JSON
+
 ### v1.2.0 (2026-01-07)
 
 - Added `clean_urls` config option for SEO-friendly URL structure
-  - Outputs `content-type/slug/index.html` instead of `content-type/slug.html`
+  - Outputs `content-type/name/index.html` instead of `content-type/name.html`
   - URLs become `/articles/my-post/` instead of `/articles/my-post.html`
-  - Date prefixes are stripped from slugs (kept in metadata for sorting)
   - Sitemap and RSS feed URLs updated accordingly
 - Updated examples with all available configuration options
 - Updated CLAUDE.md/AGENTS.md with complete configuration reference

@@ -204,6 +204,7 @@ mod tests {
             ContentTypeConfig {
                 index_template: "posts_index.html".to_string(),
                 content_template: "post.html".to_string(),
+                url_pattern: None,
                 output_naming: None,
                 rss_include: None, // Default: include
             },
@@ -233,6 +234,7 @@ mod tests {
             },
             content,
             dynamic: HashMap::new(),
+            redirects: HashMap::new(),
         }
     }
 
@@ -352,6 +354,7 @@ mod tests {
             ContentTypeConfig {
                 index_template: "pages_index.html".to_string(),
                 content_template: "page.html".to_string(),
+                url_pattern: None,
                 output_naming: None,
                 rss_include: Some(false), // Exclude from RSS
             },
@@ -449,6 +452,7 @@ mod tests {
             ContentTypeConfig {
                 index_template: "drafts_index.html".to_string(),
                 content_template: "draft.html".to_string(),
+                url_pattern: None,
                 output_naming: None,
                 rss_include: Some(false),
             },

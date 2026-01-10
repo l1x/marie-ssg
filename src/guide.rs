@@ -74,7 +74,7 @@ asset_hashing_enabled = false        # Hash CSS/JS files for cache busting (styl
 [content.blog]
 index_template = "blog_index.html"
 content_template = "post.html"
-output_naming = "date"      # Prefix output with date (YYYY-MM-DD-slug.html)
+output_naming = "date"      # Prefix output with date (YYYY-MM-DD-stem.html)
 rss_include = true          # Include in RSS feed (default: true)
 
 [content.pages]
@@ -229,21 +229,70 @@ This enables:
 
 ### Clean URLs
 
-When `clean_urls = true`, content is output with SEO-friendly directory structure:
+When `clean_urls = true`, content is output with SEO-friendly directory structure.
 
-**Before (clean_urls = false):**
-- `content/blog/2024-01-15-hello.md` → `output/blog/2024-01-15-hello.html`
-- URL: `/blog/2024-01-15-hello.html`
+**URL Pattern Placeholders:**
 
-**After (clean_urls = true):**
-- `content/blog/2024-01-15-hello.md` → `output/blog/hello/index.html`
-- URL: `/blog/hello/`
+| Placeholder | Source | Example |
+|-------------|--------|---------|
+| `{{stem}}` | filename stem (without extension) | `agentic-project-management` |
+| `{{date}}` | meta.date (YYYY-MM-DD) | `2025-12-12` |
+| `{{year}}` | meta.date | `2025` |
+| `{{month}}` | meta.date | `12` |
+| `{{day}}` | meta.date | `12` |
+
+**Example Input:**
+```
+File: content/blog/agentic-project-management.md
+meta.date: 2025-12-12T02:02:02Z
+```
+
+**URL Output Formats:**
+
+| url_pattern | clean_urls | Output |
+|-------------|------------|--------|
+| `{{stem}}` | false | /blog/agentic-project-management.html |
+| `{{stem}}` | true | /blog/agentic-project-management/index.html |
+| `{{date}}-{{stem}}` | true | /blog/2025-12-12-agentic-project-management/index.html |
+| `{{date}}/{{stem}}` | true | /blog/2025-12-12/agentic-project-management/index.html |
+| `{{year}}/{{month}}/{{day}}/{{stem}}` | true | /blog/2025/12/12/agentic-project-management/index.html |
+
+**Example configuration:**
+```toml
+[site]
+clean_urls = true
+
+[content.blog]
+index_template = "blog_index.html"
+content_template = "post.html"
+url_pattern = "{{date}}-{{stem}}"  # Flexible URL pattern
+```
+
+**Backwards Compatibility:** `output_naming = "date"` maps to `url_pattern = "{{date}}-{{stem}}"`
 
 Benefits:
+- Flexible URL structure with placeholders
+- Date from meta.date (not filename)
 - Cleaner, more shareable URLs
-- Date prefix stripped from URL (kept in metadata for sorting)
 - Trailing slash convention (modern SSG standard)
 - Sitemap and RSS URLs automatically updated
+
+### URL Redirects
+
+Configure explicit URL redirects for migrations, renames, or restructures:
+
+```toml
+[redirects]
+"/blog/old-slug/" = "/blog/2024-01-15-new-slug/"
+"/articles/legacy/" = "/blog/legacy/"
+"/about-us/" = "/about/"
+```
+
+Each mapping generates an HTML file at the "from" path with a meta-refresh redirect to the "to" URL. Benefits:
+- Pure static HTML, works on any hosting
+- Instant redirect (meta refresh content=0)
+- SEO-friendly with rel=canonical
+- No server configuration required
 
 ### Asset Hashing (Cache Busting)
 

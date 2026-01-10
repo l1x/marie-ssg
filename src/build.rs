@@ -11,8 +11,8 @@ use crate::error::RunError;
 use crate::output::{copy_static_files, write_output_file};
 use crate::template::{create_environment_with_manifest, render_html, render_index_from_loaded};
 use crate::utils::{
-    add_date_prefix, find_markdown_files, get_clean_output_path, get_content_type,
-    get_content_type_template, get_output_path,
+    build_output_path, find_markdown_files, get_content_type, get_content_type_template,
+    resolve_url_pattern,
 };
 use crate::{rss, sitemap};
 
@@ -119,21 +119,35 @@ fn run_build(
                 config.site.header_uri_fragment,
             )?;
 
-            // Determine output path based on clean_urls setting
-            let output_path = if config.site.clean_urls {
-                // Clean URLs: content-type/slug/index.html (date stripped from slug)
-                get_clean_output_path(&file, &config.site.content_dir, &config.site.output_dir)
-            } else {
-                // Legacy: content-type/slug.html with optional date prefix
-                let mut path =
-                    get_output_path(&file, &config.site.content_dir, &config.site.output_dir);
-                if let Some(ct_config) = config.content.get(&content_type)
-                    && ct_config.output_naming.as_deref() == Some("date")
-                {
-                    path = add_date_prefix(path, &content.meta.date);
-                }
-                path
-            };
+            // Get URL pattern for this content type
+            // Priority: url_pattern (new) > output_naming (deprecated) > default
+            let pattern = config
+                .content
+                .get(&content_type)
+                .and_then(|ct| {
+                    ct.url_pattern.clone().or_else(|| {
+                        // Backwards compatibility: map output_naming to url_pattern
+                        match ct.output_naming.as_deref() {
+                            Some("date") => Some("{date}-{stem}".to_string()),
+                            _ => None,
+                        }
+                    })
+                })
+                .unwrap_or_else(|| "{stem}".to_string());
+
+            // Get the filename from the file path
+            let filename = file.file_name().and_then(|f| f.to_str()).unwrap_or("index");
+
+            // Resolve the URL pattern using meta.date
+            let resolved = resolve_url_pattern(&pattern, filename, &content.meta.date);
+
+            // Build the output path
+            let output_path = build_output_path(
+                &content_type,
+                &resolved,
+                &config.site.output_dir,
+                config.site.clean_urls,
+            );
 
             Ok(LoadedContent {
                 path: file, // Move owned PathBuf - no clone needed
@@ -230,6 +244,19 @@ fn run_build(
             &rss_xml,
         )?;
         info!("rss::write → feed.xml");
+    }
+
+    // 8. Generate redirect HTML files (if configured)
+    //
+    if !config.redirects.is_empty() {
+        for (from_path, to_path) in &config.redirects {
+            let redirect_html =
+                crate::redirect::generate_redirect_html(to_path, &config.site.domain);
+            let output_path =
+                crate::redirect::get_redirect_output_path(from_path, &config.site.output_dir);
+            write_output_file(&output_path, &redirect_html)?;
+            info!("redirect::write {} → {}", from_path, to_path);
+        }
     }
 
     info!("build::complete ✓");
