@@ -1,0 +1,71 @@
+<svg viewBox="0 0 700 280" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <marker id="arrow2" markerWidth="7" markerHeight="5" refX="6" refY="2.5" orient="auto">
+      <polygon points="0 0, 7 2.5, 0 5" fill="#d4a84b"/>
+    </marker>
+    <marker id="arrow2-md" markerWidth="7" markerHeight="5" refX="6" refY="2.5" orient="auto">
+      <polygon points="0 0, 7 2.5, 0 5" fill="#e07850"/>
+    </marker>
+  </defs>
+
+  <!-- Background -->
+  <rect x="0" y="0" width="700" height="280" fill="#1e1e1e"/>
+
+  <!-- Markdown file (top left) -->
+  <rect x="10" y="10" width="200" height="115" rx="6" fill="#2a2520" stroke="#e07850" stroke-width="2"/>
+  <rect x="10" y="10" width="200" height="28" rx="6" fill="#e07850"/>
+  <text x="110" y="29" text-anchor="middle" font-family="monospace" font-size="11" fill="#1e1e1e">hello-world.md</text>
+
+  <text x="20" y="55" font-family="monospace" font-size="9" fill="#e07850"># Hello World</text>
+  <text x="20" y="70" font-family="monospace" font-size="9" fill="#e07850">## Context</text>
+  <text x="20" y="85" font-family="monospace" font-size="9" fill="#a09080">Introduction text...</text>
+  <text x="20" y="100" font-family="monospace" font-size="9" fill="#e07850">## Main Content</text>
+  <text x="20" y="115" font-family="monospace" font-size="9" fill="#a09080">Full article body...</text>
+
+  <!-- Meta file (below markdown) -->
+  <rect x="10" y="135" width="200" height="115" rx="6" fill="#2a2520" stroke="#d4a84b" stroke-width="2"/>
+  <rect x="10" y="135" width="200" height="28" rx="6" fill="#d4a84b"/>
+  <text x="110" y="154" text-anchor="middle" font-family="monospace" font-size="11" fill="#1e1e1e">hello-world.meta.toml</text>
+
+  <text x="20" y="180" font-family="monospace" font-size="9" fill="#d4a84b">title = "Hello World"</text>
+  <text x="20" y="195" font-family="monospace" font-size="9" fill="#d4a84b">date = "2025-01-15..."</text>
+  <text x="20" y="210" font-family="monospace" font-size="9" fill="#d4a84b">author = "Jane Doe"</text>
+  <text x="20" y="225" font-family="monospace" font-size="9" fill="#d4a84b">tags = ["intro"]</text>
+  <text x="20" y="240" font-family="monospace" font-size="9" fill="#d4a84b">reading_time = "5 min"</text>
+
+  <!-- Arrows to LoadedContent -->
+  <line x1="210" y1="70" x2="270" y2="100" stroke="#e07850" stroke-width="2" marker-end="url(#arrow2-md)"/>
+  <line x1="210" y1="195" x2="270" y2="165" stroke="#d4a84b" stroke-width="2" marker-end="url(#arrow2)"/>
+
+  <!-- LoadedContent struct -->
+  <rect x="280" y="40" width="220" height="180" rx="6" fill="#2a2520" stroke="#4a4540" stroke-width="2"/>
+  <rect x="280" y="40" width="220" height="28" rx="6" fill="#3a3430"/>
+  <text x="390" y="59" text-anchor="middle" font-family="system-ui, sans-serif" font-size="12" font-weight="bold" fill="#e0d5c8">LoadedContent</text>
+
+  <text x="295" y="85" font-family="monospace" font-size="10" fill="#e0d5c8">html: String</text>
+  <text x="385" y="85" font-family="system-ui, sans-serif" font-size="9" fill="#a09080">rendered markdown</text>
+
+  <text x="295" y="107" font-family="monospace" font-size="10" fill="#e0d5c8">meta: ContentMeta</text>
+  <text x="420" y="107" font-family="system-ui, sans-serif" font-size="9" fill="#a09080">parsed TOML</text>
+
+  <text x="295" y="129" font-family="monospace" font-size="10" fill="#e0d5c8">excerpt: String</text>
+  <text x="395" y="129" font-family="system-ui, sans-serif" font-size="9" fill="#a09080">## Context</text>
+
+  <text x="295" y="151" font-family="monospace" font-size="10" fill="#e0d5c8">content_type: String</text>
+  <text x="430" y="151" font-family="system-ui, sans-serif" font-size="9" fill="#a09080">directory</text>
+
+  <text x="295" y="173" font-family="monospace" font-size="10" fill="#e0d5c8">output_path: PathBuf</text>
+  <text x="430" y="173" font-family="system-ui, sans-serif" font-size="9" fill="#a09080">computed</text>
+
+  <text x="295" y="195" font-family="monospace" font-size="10" fill="#e0d5c8">stem: String</text>
+  <text x="375" y="195" font-family="system-ui, sans-serif" font-size="9" fill="#a09080">hello-world</text>
+
+  <!-- Directory context -->
+  <rect x="510" y="80" width="180" height="100" rx="4" fill="#2a2520" stroke="#7a9f6a" stroke-width="1.5"/>
+  <rect x="510" y="80" width="180" height="24" rx="4" fill="#7a9f6a"/>
+  <text x="600" y="97" text-anchor="middle" font-family="system-ui, sans-serif" font-size="10" font-weight="bold" fill="#1e1e1e">Directory Context</text>
+  <text x="520" y="120" font-family="system-ui, sans-serif" font-size="9" fill="#e0d5c8">Path determines type:</text>
+  <text x="530" y="138" font-family="monospace" font-size="8" fill="#a09080">content/articles/</text>
+  <text x="530" y="153" font-family="monospace" font-size="8" fill="#a09080">→ content_type</text>
+  <text x="530" y="168" font-family="monospace" font-size="8" fill="#7a9f6a">= "articles"</text>
+</svg>

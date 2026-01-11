@@ -1,0 +1,106 @@
+<svg viewBox="0 0 580 280" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <marker id="arr-in" markerWidth="7" markerHeight="5" refX="6" refY="2.5" orient="auto">
+      <polygon points="0 0, 7 2.5, 0 5" fill="#e07850"/>
+    </marker>
+    <marker id="arr-proc" markerWidth="7" markerHeight="5" refX="6" refY="2.5" orient="auto">
+      <polygon points="0 0, 7 2.5, 0 5" fill="#d4a84b"/>
+    </marker>
+    <marker id="arr-out" markerWidth="7" markerHeight="5" refX="6" refY="2.5" orient="auto">
+      <polygon points="0 0, 7 2.5, 0 5" fill="#7a9f6a"/>
+    </marker>
+  </defs>
+
+  <!-- Background -->
+  <rect x="0" y="0" width="580" height="280" fill="#1e1e1e"/>
+
+  <!-- Row 1: Input stages (orange) - 3 boxes, evenly distributed -->
+
+  <!-- Stage 1 - Parse Config -->
+  <rect x="10" y="10" width="155" height="50" rx="6" fill="#2a2520" stroke="#e07850" stroke-width="2"/>
+  <rect x="10" y="10" width="155" height="24" rx="6" fill="#e07850"/>
+  <text x="87" y="27" text-anchor="middle" font-family="system-ui, sans-serif" font-size="10" font-weight="bold" fill="#1e1e1e">1. Parse Config</text>
+  <text x="87" y="48" text-anchor="middle" font-family="system-ui, sans-serif" font-size="9" fill="#a09080">site.toml</text>
+
+  <line x1="165" y1="35" x2="195" y2="35" stroke="#e07850" stroke-width="2" marker-end="url(#arr-in)"/>
+
+  <!-- Stage 2 - Copy Assets -->
+  <rect x="205" y="10" width="155" height="50" rx="6" fill="#2a2520" stroke="#e07850" stroke-width="2"/>
+  <rect x="205" y="10" width="155" height="24" rx="6" fill="#e07850"/>
+  <text x="282" y="27" text-anchor="middle" font-family="system-ui, sans-serif" font-size="10" font-weight="bold" fill="#1e1e1e">2. Copy Assets</text>
+  <text x="282" y="48" text-anchor="middle" font-family="system-ui, sans-serif" font-size="9" fill="#a09080">static/</text>
+
+  <line x1="360" y1="35" x2="390" y2="35" stroke="#e07850" stroke-width="2" marker-end="url(#arr-in)"/>
+
+  <!-- Stage 3 - Load Content -->
+  <rect x="400" y="10" width="155" height="50" rx="6" fill="#2a2520" stroke="#e07850" stroke-width="2"/>
+  <rect x="400" y="10" width="155" height="24" rx="6" fill="#e07850"/>
+  <text x="477" y="27" text-anchor="middle" font-family="system-ui, sans-serif" font-size="10" font-weight="bold" fill="#1e1e1e">3. Load Content</text>
+  <text x="477" y="48" text-anchor="middle" font-family="system-ui, sans-serif" font-size="9" fill="#a09080">parallel</text>
+
+  <!-- Arrow from Load Content bottom to Render top -->
+  <line x1="477" y1="60" x2="515" y2="100" stroke="#d4a84b" stroke-width="2" marker-end="url(#arr-proc)"/>
+
+  <!-- Row 2: Process and output stages - 4 boxes evenly distributed -->
+
+  <!-- Stage 7 - Write (green) -->
+  <rect x="10" y="110" width="110" height="50" rx="6" fill="#2a2520" stroke="#7a9f6a" stroke-width="2"/>
+  <rect x="10" y="110" width="110" height="24" rx="6" fill="#7a9f6a"/>
+  <text x="65" y="127" text-anchor="middle" font-family="system-ui, sans-serif" font-size="10" font-weight="bold" fill="#1e1e1e">7. Write</text>
+  <text x="65" y="148" text-anchor="middle" font-family="system-ui, sans-serif" font-size="9" fill="#a09080">output/</text>
+
+  <!-- Stage 6 - Redirects (green) -->
+  <rect x="160" y="110" width="110" height="50" rx="6" fill="#2a2520" stroke="#7a9f6a" stroke-width="2"/>
+  <rect x="160" y="110" width="110" height="24" rx="6" fill="#7a9f6a"/>
+  <text x="215" y="127" text-anchor="middle" font-family="system-ui, sans-serif" font-size="10" font-weight="bold" fill="#1e1e1e">6. Redirects</text>
+  <text x="215" y="148" text-anchor="middle" font-family="system-ui, sans-serif" font-size="9" fill="#a09080">optional</text>
+
+  <!-- Arrow: Redirects to Write -->
+  <line x1="160" y1="135" x2="120" y2="135" stroke="#7a9f6a" stroke-width="2" marker-end="url(#arr-out)"/>
+
+  <!-- Stage 5 - Generate (green) -->
+  <rect x="310" y="110" width="110" height="50" rx="6" fill="#2a2520" stroke="#7a9f6a" stroke-width="2"/>
+  <rect x="310" y="110" width="110" height="24" rx="6" fill="#7a9f6a"/>
+  <text x="365" y="127" text-anchor="middle" font-family="system-ui, sans-serif" font-size="10" font-weight="bold" fill="#1e1e1e">5. Generate</text>
+  <text x="365" y="148" text-anchor="middle" font-family="system-ui, sans-serif" font-size="9" fill="#a09080">sitemap, RSS</text>
+
+  <!-- Arrow: Generate to Redirects -->
+  <line x1="310" y1="135" x2="270" y2="135" stroke="#7a9f6a" stroke-width="2" marker-end="url(#arr-out)"/>
+
+  <!-- Stage 4 - Render (gold) -->
+  <rect x="460" y="110" width="110" height="50" rx="6" fill="#2a2520" stroke="#d4a84b" stroke-width="2"/>
+  <rect x="460" y="110" width="110" height="24" rx="6" fill="#d4a84b"/>
+  <text x="515" y="127" text-anchor="middle" font-family="system-ui, sans-serif" font-size="10" font-weight="bold" fill="#1e1e1e">4. Render</text>
+  <text x="515" y="148" text-anchor="middle" font-family="system-ui, sans-serif" font-size="9" fill="#a09080">templates</text>
+
+  <!-- Arrow: Render to Generate -->
+  <line x1="460" y1="135" x2="420" y2="135" stroke="#d4a84b" stroke-width="2" marker-end="url(#arr-proc)"/>
+
+
+  <!-- Detail box 3 - Load Content (orange) -->
+  <rect x="10" y="180" width="180" height="90" rx="4" fill="#2a2520" stroke="#e07850" stroke-width="1.5"/>
+  <rect x="10" y="180" width="180" height="24" rx="4" fill="#e07850"/>
+  <text x="100" y="196" text-anchor="middle" font-family="system-ui, sans-serif" font-size="10" font-weight="bold" fill="#1e1e1e">3. Load Content</text>
+  <text x="20" y="220" font-family="system-ui, sans-serif" font-size="9" fill="#e0d5c8">For each .md file:</text>
+  <text x="30" y="235" font-family="system-ui, sans-serif" font-size="8" fill="#a09080">Parse .meta.toml metadata</text>
+  <text x="30" y="248" font-family="system-ui, sans-serif" font-size="8" fill="#a09080">Convert markdown to HTML</text>
+  <text x="30" y="261" font-family="system-ui, sans-serif" font-size="8" fill="#a09080">Extract excerpt</text>
+
+  <!-- Detail box 4 - Render (gold) -->
+  <rect x="200" y="180" width="180" height="90" rx="4" fill="#2a2520" stroke="#d4a84b" stroke-width="1.5"/>
+  <rect x="200" y="180" width="180" height="24" rx="4" fill="#d4a84b"/>
+  <text x="290" y="196" text-anchor="middle" font-family="system-ui, sans-serif" font-size="10" font-weight="bold" fill="#1e1e1e">4. Render</text>
+  <text x="210" y="220" font-family="system-ui, sans-serif" font-size="9" fill="#e0d5c8">For each content type:</text>
+  <text x="220" y="235" font-family="system-ui, sans-serif" font-size="8" fill="#a09080">Render index page</text>
+  <text x="220" y="248" font-family="system-ui, sans-serif" font-size="8" fill="#a09080">For each item:</text>
+  <text x="230" y="261" font-family="system-ui, sans-serif" font-size="8" fill="#a09080">Render content page</text>
+
+  <!-- Detail box 5 - Generate (green) -->
+  <rect x="390" y="180" width="180" height="90" rx="4" fill="#2a2520" stroke="#7a9f6a" stroke-width="1.5"/>
+  <rect x="390" y="180" width="180" height="24" rx="4" fill="#7a9f6a"/>
+  <text x="480" y="196" text-anchor="middle" font-family="system-ui, sans-serif" font-size="10" font-weight="bold" fill="#1e1e1e">5. Generate</text>
+  <text x="400" y="220" font-family="system-ui, sans-serif" font-size="9" fill="#e0d5c8">If enabled:</text>
+  <text x="410" y="235" font-family="system-ui, sans-serif" font-size="8" fill="#a09080">sitemap.xml</text>
+  <text x="410" y="248" font-family="system-ui, sans-serif" font-size="8" fill="#a09080">feed.xml</text>
+  <text x="410" y="261" font-family="system-ui, sans-serif" font-size="8" fill="#a09080">asset-manifest.json</text>
+</svg>
