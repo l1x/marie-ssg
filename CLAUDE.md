@@ -123,7 +123,6 @@ The project uses **mise** for task management and tool versioning. See `@mise.to
 **Required tools (installed by mise):**
 
 - Rust 1.90.0
-- Python 3.13.10
 
 **Key mise tasks:**
 

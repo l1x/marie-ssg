@@ -29,7 +29,7 @@ curl https://mise.run | sh
 The project uses **mise** for task management and tool versioning. See `mise.toml` for the complete task reference.
 
 ```bash
-# Install required tools (Rust, Python)
+# Install required tools (Rust)
 mise install
 
 # Verify installation
@@ -39,7 +39,6 @@ mise run verify
 **Required tools (automatically installed by mise):**
 
 - Rust 1.90.0
-- Python 3.13.10
 
 **Key mise tasks:**
 
