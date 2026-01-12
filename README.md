@@ -133,6 +133,13 @@ See [agents](AGENTS.md)
 
 ## Version History
 
+### v1.5.0 (2026-01-13)
+
+- Added draft content support
+  - Set `draft = true` in content metadata to exclude from builds
+  - Use `--include-drafts` flag with build/watch to include draft content
+  - Enables work-in-progress content without publishing
+
 ### v1.4.0 (2026-01-10)
 
 - Added flexible `url_pattern` system for URL customization
