@@ -64,8 +64,8 @@ fn flame_chrome(config_file: &str, output_base: &str) -> Result<(), RunError> {
 
     info!("flame::start profiling build (chrome timeline)");
 
-    // Run the build with detailed spans
-    build_with_spans(config_file)?;
+    // Run the build with detailed spans (drafts excluded during profiling)
+    build_with_spans(config_file, false)?;
 
     // Flush the chrome layer
     drop(guard);
@@ -86,9 +86,8 @@ fn flame_folded(
     let svg_path = format!("{}.svg", output_base);
 
     // Set up tracing with flame layer
-    let (flame_layer, guard) = FlameLayer::with_file(&folded_path).map_err(|e| {
-        RunError::IoError(format!("Failed to create flame layer: {}", e))
-    })?;
+    let (flame_layer, guard) = FlameLayer::with_file(&folded_path)
+        .map_err(|e| RunError::IoError(format!("Failed to create flame layer: {}", e)))?;
 
     tracing_subscriber::registry()
         .with(
@@ -100,8 +99,8 @@ fn flame_folded(
 
     info!("flame::start profiling build (folded stacks)");
 
-    // Run the build with detailed spans
-    build_with_spans(config_file)?;
+    // Run the build with detailed spans (drafts excluded during profiling)
+    build_with_spans(config_file, false)?;
 
     // Flush the flame layer
     drop(guard);
@@ -128,13 +127,11 @@ fn flame_folded(
 fn generate_flamechart(folded_path: &str, svg_path: &str) -> Result<(), RunError> {
     use inferno::flamegraph::{self, Options};
 
-    let folded_file = File::open(folded_path).map_err(|e| {
-        RunError::IoError(format!("Failed to open folded stacks file: {}", e))
-    })?;
+    let folded_file = File::open(folded_path)
+        .map_err(|e| RunError::IoError(format!("Failed to open folded stacks file: {}", e)))?;
 
-    let svg_file = File::create(svg_path).map_err(|e| {
-        RunError::IoError(format!("Failed to create SVG file: {}", e))
-    })?;
+    let svg_file = File::create(svg_path)
+        .map_err(|e| RunError::IoError(format!("Failed to create SVG file: {}", e)))?;
 
     let mut options = Options::default();
     options.title = "Marie SSG Build Profile".to_string();
@@ -143,9 +140,8 @@ fn generate_flamechart(folded_path: &str, svg_path: &str) -> Result<(), RunError
     let reader = std::io::BufReader::new(folded_file);
     let writer = BufWriter::new(svg_file);
 
-    flamegraph::from_reader(&mut options, reader, writer).map_err(|e| {
-        RunError::IoError(format!("Failed to generate flamechart: {}", e))
-    })?;
+    flamegraph::from_reader(&mut options, reader, writer)
+        .map_err(|e| RunError::IoError(format!("Failed to generate flamechart: {}", e)))?;
 
     Ok(())
 }

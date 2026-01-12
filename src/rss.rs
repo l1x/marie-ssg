@@ -250,6 +250,7 @@ mod tests {
             cover: None,
             extra: std::collections::HashMap::new(),
             extra_js: vec![],
+            draft: false,
         }
     }
 

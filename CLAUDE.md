@@ -97,6 +97,7 @@ Generates HTML redirect files with meta-refresh at each "from" path.
 | `tags` | array | no | List of tags |
 | `template` | string | no | Override default template |
 | `cover` | string | no | Cover image URL/path |
+| `draft` | bool | no | Exclude from builds (use `--include-drafts` to include) |
 | `extra.*` | string | no | Custom fields via `[extra]` section |
 
 ## Development Environment

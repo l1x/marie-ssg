@@ -71,6 +71,9 @@ pub(crate) struct ContentMeta {
     /// Access in templates via meta.extra_js
     #[serde(default)]
     pub extra_js: Vec<String>,
+    /// Whether this content is a draft (excluded from builds unless --include-drafts)
+    #[serde(default)]
+    pub draft: bool,
 }
 
 /// Processed content item ready for template rendering and output.
@@ -388,6 +391,7 @@ mod tests {
             cover: Some("/images/test-cover.jpg".to_string()),
             extra: HashMap::new(),
             extra_js: vec![],
+            draft: false,
         }
     }
 
@@ -840,10 +844,7 @@ Should not be included.
         assert_eq!(meta.extra_js.len(), 1);
         assert_eq!(meta.extra_js[0], "static/js/viz.js");
         assert_eq!(meta.cover, Some("/images/cover.png".to_string()));
-        assert_eq!(
-            meta.extra.get("reading_time"),
-            Some(&"5 min".to_string())
-        );
+        assert_eq!(meta.extra.get("reading_time"), Some(&"5 min".to_string()));
     }
 
     #[test]
@@ -1026,5 +1027,46 @@ This continues until the end of the string.
         // Headers should NOT have id attributes when disabled
         assert!(!html.contains("id=\"main-title\""));
         assert!(html.contains("<h1>Main Title</h1>"));
+    }
+
+    #[test]
+    fn test_content_meta_draft_defaults_to_false() {
+        let meta_content = r#"
+    title = "Test Post"
+    date = "2023-12-15T10:30:00+05:00"
+    author = "Test Author"
+    tags = ["rust"]
+    "#;
+
+        let meta: ContentMeta = toml::from_str(meta_content).unwrap();
+        assert!(!meta.draft, "draft should default to false");
+    }
+
+    #[test]
+    fn test_content_meta_with_draft_true() {
+        let meta_content = r#"
+    title = "Draft Post"
+    date = "2023-12-15T10:30:00+05:00"
+    author = "Test Author"
+    tags = ["rust"]
+    draft = true
+    "#;
+
+        let meta: ContentMeta = toml::from_str(meta_content).unwrap();
+        assert!(meta.draft, "draft should be true when explicitly set");
+    }
+
+    #[test]
+    fn test_content_meta_with_draft_false() {
+        let meta_content = r#"
+    title = "Published Post"
+    date = "2023-12-15T10:30:00+05:00"
+    author = "Test Author"
+    tags = ["rust"]
+    draft = false
+    "#;
+
+        let meta: ContentMeta = toml::from_str(meta_content).unwrap();
+        assert!(!meta.draft, "draft should be false when explicitly set");
     }
 }

@@ -7,7 +7,7 @@ use tracing::{debug, error, info};
 
 /// Watch for file changes and rebuild automatically (macOS only)
 #[cfg(target_os = "macos")]
-pub(crate) fn watch(config_file: &str) -> Result<(), RunError> {
+pub(crate) fn watch(config_file: &str, include_drafts: bool) -> Result<(), RunError> {
     use std::sync::mpsc::channel;
     use std::thread;
     use std::time::{Duration, Instant};
@@ -19,9 +19,12 @@ pub(crate) fn watch(config_file: &str) -> Result<(), RunError> {
 
     info!("watch::start {:?}", paths_to_watch);
     info!("watch::info press Ctrl+C to stop");
+    if include_drafts {
+        info!("watch::drafts including draft content");
+    }
 
     // Initial build (use fresh environment from the start)
-    if let Err(e) = build_fresh(config_file) {
+    if let Err(e) = build_fresh(config_file, include_drafts) {
         error!("Initial build failed: {:?}", e);
     }
 
@@ -50,7 +53,7 @@ pub(crate) fn watch(config_file: &str) -> Result<(), RunError> {
                 debug!("watch::change {:?}", events);
                 last_build = Instant::now();
 
-                if let Err(e) = build_fresh(config_file) {
+                if let Err(e) = build_fresh(config_file, include_drafts) {
                     error!("Build failed: {:?}", e);
                 }
             }
@@ -65,7 +68,7 @@ pub(crate) fn watch(config_file: &str) -> Result<(), RunError> {
 }
 
 #[cfg(not(target_os = "macos"))]
-pub(crate) fn watch(_config_file: &str) -> Result<(), RunError> {
+pub(crate) fn watch(_config_file: &str, _include_drafts: bool) -> Result<(), RunError> {
     eprintln!("Watch mode is only supported on macOS");
     std::process::exit(1);
 }

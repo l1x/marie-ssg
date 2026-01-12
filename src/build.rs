@@ -27,7 +27,7 @@ pub(crate) struct LoadedContent {
 }
 
 /// The main entry point for the application logic.
-pub(crate) fn build(config_file: &str) -> Result<(), RunError> {
+pub(crate) fn build(config_file: &str, include_drafts: bool) -> Result<(), RunError> {
     let config = Config::load_from_file(config_file)?;
 
     // Hash static assets if enabled
@@ -46,12 +46,12 @@ pub(crate) fn build(config_file: &str) -> Result<(), RunError> {
     }
 
     let env = create_environment_with_manifest(&config.site.template_dir, manifest.as_ref());
-    run_build(config_file, &config, &env)
+    run_build(config_file, &config, &env, include_drafts)
 }
 
 /// Build with detailed tracing spans for flamechart profiling.
 #[instrument(name = "build", skip_all)]
-pub(crate) fn build_with_spans(config_file: &str) -> Result<(), RunError> {
+pub(crate) fn build_with_spans(config_file: &str, include_drafts: bool) -> Result<(), RunError> {
     let config = Config::load_from_file(config_file)?;
 
     // Hash static assets if enabled
@@ -70,11 +70,11 @@ pub(crate) fn build_with_spans(config_file: &str) -> Result<(), RunError> {
     }
 
     let env = create_environment_with_manifest(&config.site.template_dir, manifest.as_ref());
-    run_build_with_spans(config_file, &config, &env)
+    run_build_with_spans(config_file, &config, &env, include_drafts)
 }
 
 /// Build with a fresh template environment (for watch mode).
-pub(crate) fn build_fresh(config_file: &str) -> Result<(), RunError> {
+pub(crate) fn build_fresh(config_file: &str, include_drafts: bool) -> Result<(), RunError> {
     let config = Config::load_from_file(config_file)?;
 
     // Hash static assets if enabled
@@ -93,7 +93,7 @@ pub(crate) fn build_fresh(config_file: &str) -> Result<(), RunError> {
     }
 
     let env = create_environment_with_manifest(&config.site.template_dir, manifest.as_ref());
-    run_build(config_file, &config, &env)
+    run_build(config_file, &config, &env, include_drafts)
 }
 
 /// Get the list of file paths/directories to watch for changes.
@@ -111,6 +111,7 @@ fn run_build(
     config_file: &str,
     config: &Config,
     env: &minijinja::Environment,
+    include_drafts: bool,
 ) -> Result<(), RunError> {
     debug!("config::load ← {}", config_file);
 
@@ -182,6 +183,16 @@ fn run_build(
             })
         })
         .collect::<Result<Vec<_>, _>>()?; // Collect Results, fail fast on error
+
+    // Filter out draft content unless --include-drafts is set
+    let loaded_contents: Vec<LoadedContent> = if include_drafts {
+        loaded_contents
+    } else {
+        loaded_contents
+            .into_iter()
+            .filter(|lc| !lc.content.meta.draft)
+            .collect()
+    };
 
     info!(
         "content::load {} files in {:.2?}",
@@ -293,6 +304,7 @@ fn run_build_with_spans(
     config_file: &str,
     config: &Config,
     env: &minijinja::Environment,
+    include_drafts: bool,
 ) -> Result<(), RunError> {
     debug!("config::load ← {}", config_file);
 
@@ -331,12 +343,12 @@ fn run_build_with_spans(
                 .content
                 .get(&content_type)
                 .and_then(|ct| {
-                    ct.url_pattern.clone().or_else(|| {
-                        match ct.output_naming.as_deref() {
+                    ct.url_pattern
+                        .clone()
+                        .or_else(|| match ct.output_naming.as_deref() {
                             Some("date") => Some("{date}-{stem}".to_string()),
                             _ => None,
-                        }
-                    })
+                        })
                 })
                 .unwrap_or_else(|| "{stem}".to_string());
 
@@ -359,6 +371,16 @@ fn run_build_with_spans(
         })
         .collect::<Result<Vec<_>, _>>()?;
     drop(_load_span);
+
+    // Filter out draft content unless --include-drafts is set
+    let loaded_contents: Vec<LoadedContent> = if include_drafts {
+        loaded_contents
+    } else {
+        loaded_contents
+            .into_iter()
+            .filter(|lc| !lc.content.meta.draft)
+            .collect()
+    };
 
     info!(
         "content::load {} files in {:.2?}",
@@ -385,7 +407,9 @@ fn run_build_with_spans(
     // 4. Render content type indexes
     let _index_span = tracing::info_span!("render_indexes").entered();
     for (content_type, v) in config.content.iter() {
-        let _ct_span = tracing::info_span!("render_content_type_index", content_type = %content_type).entered();
+        let _ct_span =
+            tracing::info_span!("render_content_type_index", content_type = %content_type)
+                .entered();
 
         let filtered: Vec<_> = loaded_contents
             .iter()
@@ -443,7 +467,8 @@ fn run_build_with_spans(
 
     // 8. Generate redirect HTML files
     if !config.redirects.is_empty() {
-        let _redirect_span = tracing::info_span!("generate_redirects", count = config.redirects.len()).entered();
+        let _redirect_span =
+            tracing::info_span!("generate_redirects", count = config.redirects.len()).entered();
         for (from_path, to_path) in &config.redirects {
             let redirect_html =
                 crate::redirect::generate_redirect_html(to_path, &config.site.domain);

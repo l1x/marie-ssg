@@ -57,6 +57,10 @@ struct BuildArgs {
     /// path to the config file
     #[argh(option, short = 'c', default = "default_config_file()")]
     config_file: String,
+
+    /// include draft content in the build
+    #[argh(switch)]
+    include_drafts: bool,
 }
 
 #[derive(FromArgs, Debug)]
@@ -66,6 +70,10 @@ struct WatchArgs {
     /// path to the config file
     #[argh(option, short = 'c', default = "default_config_file()")]
     config_file: String,
+
+    /// include draft content in the build
+    #[argh(switch)]
+    include_drafts: bool,
 }
 
 #[derive(FromArgs, Debug)]
@@ -113,7 +121,13 @@ fn main() {
 
     // Flame command has its own tracing setup for profiling
     if let Some(SubCommand::Flame(args)) = argz.command {
-        if let Err(e) = flame::flame(&args.config_file, &args.output, args.fold, args.svg, args.time) {
+        if let Err(e) = flame::flame(
+            &args.config_file,
+            &args.output,
+            args.fold,
+            args.svg,
+            args.time,
+        ) {
             eprintln!("Error: {:?}", e);
             std::process::exit(1);
         }
@@ -139,13 +153,13 @@ fn main() {
 
     match argz.command {
         Some(SubCommand::Build(args)) => {
-            if let Err(e) = build::build(&args.config_file) {
+            if let Err(e) = build::build(&args.config_file, args.include_drafts) {
                 error!("{:?}", e);
                 std::process::exit(1);
             }
         }
         Some(SubCommand::Watch(args)) => {
-            if let Err(e) = watch::watch(&args.config_file) {
+            if let Err(e) = watch::watch(&args.config_file, args.include_drafts) {
                 error!("{:?}", e);
                 std::process::exit(1);
             }
