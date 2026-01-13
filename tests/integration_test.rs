@@ -62,6 +62,20 @@ fn run_ssg(site_dir: &Path) -> assert_cmd::assert::Assert {
         .success()
 }
 
+/// Helper to run marie-ssg CLI with --include-drafts flag
+fn run_ssg_with_drafts(site_dir: &Path) -> assert_cmd::assert::Assert {
+    let config_path = site_dir.join("site.toml");
+
+    cargo_bin_cmd!("marie-ssg")
+        .current_dir(site_dir)
+        .arg("build")
+        .arg("-c")
+        .arg(config_path.file_name().unwrap())
+        .arg("--include-drafts")
+        .assert()
+        .success()
+}
+
 /// Helper to parse HTML and select elements
 fn parse_html_file(path: &Path) -> Html {
     let content = fs::read_to_string(path)
@@ -487,5 +501,201 @@ fn test_sitemap_generated() {
     assert!(
         sitemap_content.contains("2024-01-15") || sitemap_content.contains("2024-02-20"),
         "Should have content dates"
+    );
+}
+
+#[test]
+fn test_draft_content_excluded_by_default() {
+    let temp_site = setup_test_site();
+    let output_dir = temp_site.path().join("output");
+
+    // Normal build should exclude drafts
+    run_ssg(temp_site.path())
+        .success()
+        .stdout(predicate::str::contains("content::load 3 files")); // 2 published posts + 1 page
+
+    // Check blog directory - should only have 2 published posts
+    let blog_dir = output_dir.join("blog");
+    let blog_posts: Vec<_> = fs::read_dir(&blog_dir)
+        .unwrap()
+        .filter_map(|e| e.ok())
+        .filter(|e| {
+            e.path().is_file()
+                && e.path().extension().map_or(false, |ext| ext == "html")
+                && e.file_name().to_string_lossy() != "index.html"
+        })
+        .collect();
+
+    assert_eq!(
+        blog_posts.len(),
+        2,
+        "Should only have 2 published blog posts (drafts excluded)"
+    );
+
+    // Verify draft files don't exist
+    assert!(
+        !blog_dir.join("draft-post.html").exists()
+            && !blog_dir
+                .join("2024-03-01-draft-post.html")
+                .exists(),
+        "Draft post should not be generated"
+    );
+    assert!(
+        !blog_dir.join("another-draft.html").exists()
+            && !blog_dir
+                .join("2024-03-15-another-draft.html")
+                .exists(),
+        "Another draft should not be generated"
+    );
+
+    // Check blog index only shows 2 posts
+    let blog_index = parse_html_file(&blog_dir.join("index.html"));
+    let post_count = count_elements(&blog_index, ".post-summary");
+    assert_eq!(
+        post_count, 2,
+        "Blog index should only show 2 published posts"
+    );
+}
+
+#[test]
+fn test_draft_content_included_with_flag() {
+    let temp_site = setup_test_site();
+    let output_dir = temp_site.path().join("output");
+
+    // Build with --include-drafts should include all content
+    run_ssg_with_drafts(temp_site.path())
+        .success()
+        .stdout(predicate::str::contains("content::load 5 files")); // 2 published + 2 drafts + 1 page
+
+    // Check blog directory - should have 4 posts (2 published + 2 drafts)
+    let blog_dir = output_dir.join("blog");
+    let blog_posts: Vec<_> = fs::read_dir(&blog_dir)
+        .unwrap()
+        .filter_map(|e| e.ok())
+        .filter(|e| {
+            e.path().is_file()
+                && e.path().extension().map_or(false, |ext| ext == "html")
+                && e.file_name().to_string_lossy() != "index.html"
+        })
+        .collect();
+
+    assert_eq!(
+        blog_posts.len(),
+        4,
+        "Should have 4 blog posts (2 published + 2 drafts)"
+    );
+
+    // Check blog index shows all 4 posts
+    let blog_index = parse_html_file(&blog_dir.join("index.html"));
+    let post_count = count_elements(&blog_index, ".post-summary");
+    assert_eq!(
+        post_count, 4,
+        "Blog index should show all 4 posts including drafts"
+    );
+
+    // Verify draft titles appear in index
+    let sel = Selector::parse(".post-summary h3").unwrap();
+    let titles: Vec<String> = blog_index
+        .select(&sel)
+        .map(|el| el.text().collect::<String>().trim().to_string())
+        .collect();
+
+    assert!(
+        titles.iter().any(|t| t == "Draft Post"),
+        "Draft Post should appear in index"
+    );
+    assert!(
+        titles.iter().any(|t| t == "Another Draft"),
+        "Another Draft should appear in index"
+    );
+}
+
+#[test]
+fn test_draft_sorting_with_published() {
+    let temp_site = setup_test_site();
+    let output_dir = temp_site.path().join("output");
+
+    // Build with drafts included
+    run_ssg_with_drafts(temp_site.path()).success();
+
+    let blog_index = parse_html_file(&output_dir.join("blog/index.html"));
+
+    // Check sorting (newest first) - drafts have later dates
+    let sel = Selector::parse(".post-summary h3").unwrap();
+    let titles: Vec<String> = blog_index
+        .select(&sel)
+        .map(|el| el.text().collect::<String>().trim().to_string())
+        .collect();
+
+    assert_eq!(titles.len(), 4);
+    // Drafts have dates in July 2024, published posts in Jan/June 2024
+    // So drafts should appear first (sorted by date descending)
+    assert_eq!(
+        titles[0], "Another Draft",
+        "Newest draft (July 15) should be first"
+    );
+    assert_eq!(
+        titles[1], "Draft Post",
+        "Second newest (July 1) should be second"
+    );
+    assert_eq!(
+        titles[2], "Second Blog Post",
+        "Published post (June 20) should be third"
+    );
+    assert_eq!(
+        titles[3], "My First Post",
+        "Oldest post (Jan 15) should be last"
+    );
+}
+
+#[test]
+fn test_draft_not_in_sitemap_by_default() {
+    let temp_site = setup_test_site();
+    let output_dir = temp_site.path().join("output");
+
+    // Normal build
+    run_ssg(temp_site.path()).success();
+
+    let sitemap_content = fs::read_to_string(output_dir.join("sitemap.xml")).unwrap();
+
+    // Drafts should not appear in sitemap
+    assert!(
+        !sitemap_content.contains("draft-post"),
+        "Draft post should not be in sitemap"
+    );
+    assert!(
+        !sitemap_content.contains("another-draft"),
+        "Another draft should not be in sitemap"
+    );
+
+    // Published posts should still be there
+    assert!(
+        sitemap_content.contains("first-post"),
+        "First post should be in sitemap"
+    );
+    assert!(
+        sitemap_content.contains("second-post"),
+        "Second post should be in sitemap"
+    );
+}
+
+#[test]
+fn test_draft_in_sitemap_with_flag() {
+    let temp_site = setup_test_site();
+    let output_dir = temp_site.path().join("output");
+
+    // Build with drafts
+    run_ssg_with_drafts(temp_site.path()).success();
+
+    let sitemap_content = fs::read_to_string(output_dir.join("sitemap.xml")).unwrap();
+
+    // Drafts should appear in sitemap when included
+    assert!(
+        sitemap_content.contains("draft-post"),
+        "Draft post should be in sitemap when --include-drafts is used"
+    );
+    assert!(
+        sitemap_content.contains("another-draft"),
+        "Another draft should be in sitemap when --include-drafts is used"
     );
 }
