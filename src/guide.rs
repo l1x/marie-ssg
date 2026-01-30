@@ -14,7 +14,9 @@ Marie is a static site generator that converts markdown files with TOML metadata
 ```bash
 marie-ssg build              # Build the site
 marie-ssg build -c prod.toml # Build with custom config
+marie-ssg build --include-drafts  # Include draft content in build
 marie-ssg watch              # Watch and rebuild on changes (macOS)
+marie-ssg watch --include-drafts  # Watch mode with drafts included
 marie-ssg flame              # Build with profiling, output flamechart.svg
 marie-ssg flame --time       # Profile with Chrome DevTools JSON output
 marie-ssg guide              # Show this guide
@@ -132,6 +134,7 @@ category = "tutorials"
 | date     | Yes      | Publication date (RFC 3339: `YYYY-MM-DDTHH:MM:SS+00:00`) |
 | author   | Yes      | Author name                                              |
 | tags     | Yes      | Array of tags (can be empty: `[]`)                       |
+| draft    | No       | Exclude from builds (use `--include-drafts` to include)  |
 | template | No       | Override the content type's default template             |
 | cover    | No       | Cover image URL/path for social sharing                  |
 | extra_js | No       | JavaScript files to load (array, e.g., `["js/chart.js"]`)|

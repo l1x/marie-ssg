@@ -39,6 +39,10 @@ run = "cargo clippy -- -D warnings && cargo test"
 description = "Run tests with coverage report (requires cargo-tarpaulin)"
 run = "cargo tarpaulin --out Html --output-dir coverage"
 
+[tasks.bench]
+description = "Run performance benchmarks"
+run = "cargo bench"
+
 [tasks.build-dev]
 description = "Building the development version"
 run = "cargo build"
