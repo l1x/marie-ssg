@@ -63,6 +63,7 @@ syntax_highlighting_enabled = true   # Enable code block highlighting
 syntax_highlighting_theme = "github_dark"
 sitemap_enabled = true               # Generate sitemap.xml
 rss_enabled = true                   # Generate feed.xml
+rss_full_content = false             # Include full HTML in RSS via <content:encoded>
 allow_dangerous_html = false         # Allow raw HTML in markdown (for <figure>, inline SVGs, etc.)
 header_uri_fragment = false          # Add anchor links to headers for URL fragment navigation
 clean_urls = false                   # Output as slug/index.html for SEO-friendly URLs (/blog/post/ instead of /blog/post.html)
@@ -227,6 +228,7 @@ Automatically generates `sitemap.xml` with all pages when `sitemap_enabled = tru
 Generates `feed.xml` with RSS 2.0 format when `rss_enabled = true`.
 - Control per content type with `rss_include = true/false`
 - Uses "## Context" section as excerpt
+- Set `rss_full_content = true` to include full article HTML via `<content:encoded>` (for syndication to Dev.to, Hashnode, etc.)
 
 ### Header Anchor Links
 

@@ -35,6 +35,11 @@ sitemap_enabled = true
 # Generate RSS feed (feed.xml) at the root of the output directory
 rss_enabled = true
 
+# Include full article HTML in RSS feed via <content:encoded>
+# Useful for syndication to platforms like Dev.to and Hashnode
+# When false (default), only the excerpt is included in <description>
+rss_full_content = false
+
 # Allow raw HTML in markdown content
 # WARNING: Only enable for trusted content sources (security risk)
 allow_dangerous_html = false

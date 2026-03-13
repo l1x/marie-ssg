@@ -84,6 +84,10 @@ pub(crate) struct SiteConfig {
     /// Enable clean URL structure: output as <type>/<slug>/index.html instead of <type>/<slug>.html
     #[serde(default)]
     pub clean_urls: bool,
+    /// Include full article HTML in RSS feed via content:encoded element
+    /// When false (default), only the excerpt is included in <description>
+    #[serde(default)]
+    pub rss_full_content: bool,
     /// Enable content-based asset hashing for CSS/JS files (cache busting)
     #[serde(default)]
     pub asset_hashing_enabled: bool,
@@ -363,6 +367,40 @@ rss_enabled = false
         assert!(
             !config.site.rss_enabled,
             "rss_enabled should be false when explicitly set"
+        );
+    }
+
+    #[test]
+    fn test_config_rss_full_content_default() {
+        let config = Config::from_str(minimal_config_toml()).unwrap();
+
+        assert!(
+            !config.site.rss_full_content,
+            "rss_full_content should default to false"
+        );
+    }
+
+    #[test]
+    fn test_config_rss_full_content_enabled() {
+        let toml = r#"
+[site]
+title = "Test Site"
+tagline = "A test tagline"
+domain = "example.com"
+author = "Test Author"
+output_dir = "output"
+content_dir = "content"
+template_dir = "templates"
+static_dir = "static"
+site_index_template = "index.html"
+rss_full_content = true
+"#;
+
+        let config = Config::from_str(toml).unwrap();
+
+        assert!(
+            config.site.rss_full_content,
+            "rss_full_content should be true when explicitly set"
         );
     }
 

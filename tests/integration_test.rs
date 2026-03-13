@@ -12,6 +12,7 @@ use assert_cmd::cargo::cargo_bin_cmd;
 use predicates::prelude::*;
 use scraper::{Html, Selector};
 use std::fs;
+use std::io::Write;
 use std::path::{Path, PathBuf};
 use tempfile::TempDir;
 
@@ -697,5 +698,107 @@ fn test_draft_in_sitemap_with_flag() {
     assert!(
         sitemap_content.contains("another-draft"),
         "Another draft should be in sitemap when --include-drafts is used"
+    );
+}
+
+#[test]
+fn test_rss_no_full_content_by_default() {
+    let temp_site = setup_test_site();
+    let output_dir = temp_site.path().join("output");
+
+    run_ssg(temp_site.path()).success();
+
+    let feed_path = output_dir.join("feed.xml");
+    assert!(feed_path.exists(), "feed.xml should be generated");
+
+    let feed_content = fs::read_to_string(&feed_path).unwrap();
+
+    // Should have standard RSS structure
+    assert!(feed_content.contains(r#"<rss version="2.0""#));
+    assert!(feed_content.contains(r#"xmlns:atom="http://www.w3.org/2005/Atom""#));
+
+    // Should NOT have content namespace or content:encoded
+    assert!(
+        !feed_content.contains("xmlns:content"),
+        "Should not include content namespace by default"
+    );
+    assert!(
+        !feed_content.contains("<content:encoded>"),
+        "Should not include content:encoded by default"
+    );
+
+    // Should have description excerpts
+    assert!(
+        feed_content.contains("<description>"),
+        "Should include description elements"
+    );
+
+    // Should have channel-level pubDate and lastBuildDate
+    assert!(
+        feed_content.contains("<pubDate>"),
+        "Should include channel pubDate"
+    );
+    assert!(
+        feed_content.contains("<lastBuildDate>"),
+        "Should include lastBuildDate"
+    );
+
+    // Should have guid with isPermaLink
+    assert!(
+        feed_content.contains(r#"<guid isPermaLink="true">"#),
+        "guid should have isPermaLink attribute"
+    );
+}
+
+#[test]
+fn test_rss_full_content_enabled() {
+    let temp_site = setup_test_site();
+    let output_dir = temp_site.path().join("output");
+
+    // Modify site.toml to enable rss_full_content
+    let config_path = temp_site.path().join("site.toml");
+    let mut config_content = fs::read_to_string(&config_path).unwrap();
+    // Insert rss_full_content = true after the [site] section header
+    config_content = config_content.replacen(
+        "site_index_template = \"site_index.html\"",
+        "site_index_template = \"site_index.html\"\nrss_full_content = true",
+        1,
+    );
+    let mut file = fs::File::create(&config_path).unwrap();
+    file.write_all(config_content.as_bytes()).unwrap();
+
+    run_ssg(temp_site.path()).success();
+
+    let feed_path = output_dir.join("feed.xml");
+    assert!(feed_path.exists(), "feed.xml should be generated");
+
+    let feed_content = fs::read_to_string(&feed_path).unwrap();
+
+    // Should have content namespace
+    assert!(
+        feed_content.contains(r#"xmlns:content="http://purl.org/rss/1.0/modules/content/""#),
+        "Should include content namespace when rss_full_content is enabled"
+    );
+
+    // Should have content:encoded elements with CDATA
+    assert!(
+        feed_content.contains("<content:encoded><![CDATA["),
+        "Should include content:encoded with CDATA"
+    );
+    assert!(
+        feed_content.contains("]]></content:encoded>"),
+        "Should close content:encoded properly"
+    );
+
+    // Should still have description excerpts
+    assert!(
+        feed_content.contains("<description>"),
+        "Should still include description elements as fallback"
+    );
+
+    // Content should include rendered HTML from the posts
+    assert!(
+        feed_content.contains("<h2>"),
+        "content:encoded should contain rendered HTML"
     );
 }

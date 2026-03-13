@@ -25,7 +25,11 @@ pub(crate) fn generate_rss(config: &Config, loaded_contents: &[LoadedContent]) -
     // XML declaration and RSS opening tag with Atom namespace
     xml.push_str(r#"<?xml version="1.0" encoding="UTF-8"?>"#);
     xml.push('\n');
-    xml.push_str(r#"<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">"#);
+    if config.site.rss_full_content {
+        xml.push_str(r#"<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom" xmlns:content="http://purl.org/rss/1.0/modules/content/">"#);
+    } else {
+        xml.push_str(r#"<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">"#);
+    }
     xml.push('\n');
     xml.push_str("  <channel>\n");
 
@@ -59,6 +63,20 @@ pub(crate) fn generate_rss(config: &Config, loaded_contents: &[LoadedContent]) -
 
     // Sort by date descending (newest first)
     items.sort_by(|a, b| b.content.meta.date.cmp(&a.content.meta.date));
+
+    // Channel pubDate from most recent item
+    if let Some(newest) = items.first() {
+        xml.push_str(&format!(
+            "    <pubDate>{}</pubDate>\n",
+            format_rfc2822(&newest.content.meta.date)
+        ));
+    }
+
+    // Build timestamp
+    xml.push_str(&format!(
+        "    <lastBuildDate>{}</lastBuildDate>\n",
+        format_rfc2822(&OffsetDateTime::now_utc())
+    ));
 
     // Add items
     for content in items {
@@ -120,7 +138,10 @@ fn format_item(config: &Config, content: &LoadedContent, base_url: &str) -> Stri
     };
 
     item.push_str(&format!("      <link>{}</link>\n", url));
-    item.push_str(&format!("      <guid>{}</guid>\n", url));
+    item.push_str(&format!(
+        "      <guid isPermaLink=\"true\">{}</guid>\n",
+        url
+    ));
 
     // Description (excerpt)
     let excerpt = get_excerpt_html(
@@ -132,6 +153,14 @@ fn format_item(config: &Config, content: &LoadedContent, base_url: &str) -> Stri
         item.push_str(&format!(
             "      <description>{}</description>\n",
             xml_escape(&excerpt)
+        ));
+    }
+
+    // Full content (when rss_full_content is enabled)
+    if config.site.rss_full_content {
+        item.push_str(&format!(
+            "      <content:encoded><![CDATA[{}]]></content:encoded>\n",
+            escape_cdata(&content.html)
         ));
     }
 
@@ -164,6 +193,14 @@ fn format_rfc2822(date: &OffsetDateTime) -> String {
 /// Handles platform-specific path separators and ensures forward slashes.
 fn path_to_url(path: &Path) -> String {
     path.to_string_lossy().replace('\\', "/")
+}
+
+/// Escapes CDATA end sequences (`]]>`) in content to avoid breaking CDATA sections.
+///
+/// Replaces `]]>` with `]]]]><![CDATA[>` which closes the current CDATA section,
+/// outputs the `>` character, and reopens a new CDATA section.
+fn escape_cdata(s: &str) -> String {
+    s.replace("]]>", "]]]]><![CDATA[>")
 }
 
 /// Escapes special XML characters in a string.
@@ -229,6 +266,7 @@ mod tests {
                 allow_dangerous_html: false,
                 header_uri_fragment: false,
                 clean_urls: false,
+                rss_full_content: false,
                 asset_hashing_enabled: false,
                 asset_manifest_path: None,
             },
@@ -485,5 +523,136 @@ mod tests {
         let channel_closes = rss.matches("</channel>").count();
         assert_eq!(channel_opens, channel_closes);
         assert_eq!(channel_opens, 1);
+    }
+
+    #[test]
+    fn test_rss_full_content_disabled_by_default() {
+        let config = create_test_config();
+        let contents = vec![create_test_loaded_content(
+            "test",
+            "Test Post",
+            "2024-01-15T10:00:00+00:00",
+            "posts",
+            "# Test\n\n## Context\n\nExcerpt here.",
+        )];
+
+        let rss = generate_rss(&config, &contents);
+
+        assert!(!rss.contains("xmlns:content"));
+        assert!(!rss.contains("<content:encoded>"));
+    }
+
+    #[test]
+    fn test_rss_full_content_enabled() {
+        let mut config = create_test_config();
+        config.site.rss_full_content = true;
+        let contents = vec![create_test_loaded_content(
+            "test",
+            "Test Post",
+            "2024-01-15T10:00:00+00:00",
+            "posts",
+            "# Test\n\n## Context\n\nExcerpt here.",
+        )];
+
+        let rss = generate_rss(&config, &contents);
+
+        // Should include content namespace
+        assert!(rss.contains(r#"xmlns:content="http://purl.org/rss/1.0/modules/content/""#));
+        // Should include content:encoded with CDATA
+        assert!(rss.contains("<content:encoded><![CDATA["));
+        assert!(rss.contains("]]></content:encoded>"));
+        // Should still include the full HTML from LoadedContent
+        assert!(rss.contains("<h1>Test</h1>"));
+        // Should still include description excerpt
+        assert!(rss.contains("<description>"));
+    }
+
+    #[test]
+    fn test_rss_channel_pubdate_from_newest_item() {
+        let config = create_test_config();
+        let contents = vec![
+            create_test_loaded_content(
+                "older",
+                "Older Post",
+                "2024-01-01T10:00:00+00:00",
+                "posts",
+                "# Older",
+            ),
+            create_test_loaded_content(
+                "newer",
+                "Newer Post",
+                "2024-02-01T10:00:00+00:00",
+                "posts",
+                "# Newer",
+            ),
+        ];
+
+        let rss = generate_rss(&config, &contents);
+
+        // Channel pubDate should match the newest item's date
+        assert!(
+            rss.contains("<pubDate>Thu, 01 Feb 2024"),
+            "Channel pubDate should be from the newest item"
+        );
+    }
+
+    #[test]
+    fn test_rss_channel_no_pubdate_when_empty() {
+        let config = create_test_config();
+        let contents: Vec<LoadedContent> = vec![];
+
+        let rss = generate_rss(&config, &contents);
+
+        // No pubDate when there are no items
+        assert!(
+            !rss.contains("<pubDate>"),
+            "Should not have pubDate when no items"
+        );
+    }
+
+    #[test]
+    fn test_rss_channel_last_build_date() {
+        let config = create_test_config();
+        let contents: Vec<LoadedContent> = vec![];
+
+        let rss = generate_rss(&config, &contents);
+
+        assert!(
+            rss.contains("<lastBuildDate>"),
+            "Should include lastBuildDate"
+        );
+    }
+
+    #[test]
+    fn test_rss_guid_is_permalink() {
+        let config = create_test_config();
+        let contents = vec![create_test_loaded_content(
+            "test",
+            "Test",
+            "2024-01-15T10:00:00+00:00",
+            "posts",
+            "# Test",
+        )];
+
+        let rss = generate_rss(&config, &contents);
+
+        assert!(
+            rss.contains(r#"<guid isPermaLink="true">"#),
+            "guid should have isPermaLink attribute"
+        );
+    }
+
+    #[test]
+    fn test_escape_cdata() {
+        assert_eq!(escape_cdata("hello"), "hello");
+        assert_eq!(escape_cdata("no special chars"), "no special chars");
+        assert_eq!(
+            escape_cdata("before ]]> after"),
+            "before ]]]]><![CDATA[> after"
+        );
+        assert_eq!(
+            escape_cdata("]]>]]>"),
+            "]]]]><![CDATA[>]]]]><![CDATA[>"
+        );
     }
 }

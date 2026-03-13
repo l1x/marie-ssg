@@ -144,6 +144,7 @@ mod tests {
                 allow_dangerous_html: false,
                 header_uri_fragment: false,
                 clean_urls: false,
+                rss_full_content: false,
                 asset_hashing_enabled: false,
                 asset_manifest_path: None,
             },
