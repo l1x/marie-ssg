@@ -67,26 +67,6 @@ run = "cargo machete"
 description = "Run security audit and find unused dependencies"
 depends = ["audit", "machete"]
 
-[tasks.show-issues]
-description = "List all open issues"
-run = "bd list"
-
-[tasks.show-ready]
-description = "Show ready work (no blockers)"
-run = "bd ready"
-
-[tasks.show-blocked]
-description = "Show blocked issues"
-run = "bd blocked"
-
-[tasks.show-issue-stats]
-description = "Show issue statistics"
-run = "bd stats"
-
-[tasks.show-issue-tree]
-description = "Show dependency tree for an issue (use: mise run issue-tree -- bd-1)"
-run = "bd dep tree"
-
 [tasks.update-prompts]
 description = "Update agent-prompts submodule to latest"
 run = """
